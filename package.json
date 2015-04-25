@@ -18,9 +18,6 @@
     "xp-emitter": "*",
     "expandjs": "*"
   },
-  "devDependencies": {
-    "browserify": "*"
-  },
   "scripts": {
     "browserify": "browserify index -i xp-emitter -i expandjs > dist/xp-request.js"
   }
