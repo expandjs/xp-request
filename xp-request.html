@@ -1,0 +1,434 @@
+<!--
+@license
+Copyright (c) 2015 The expand.js authors. All rights reserved.
+This code may only be used under the BSD style license found at https://expandjs.github.io/LICENSE.txt
+The complete set of authors may be found at https://expandjs.github.io/AUTHORS.txt
+The complete set of contributors may be found at https://expandjs.github.io/CONTRIBUTORS.txt
+-->
+
+<!--
+This component is used to perform XHR requests.
+
+@component xp-request
+@description This component is used to perform XHR requests.
+
+@dependency polymer Polymer/polymer#^0.5
+@dependency expandjs ExpandJS/expandjs
+@dependency xp-emitter ExpandJS/xp-emitter
+-->
+
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../expandjs/expandjs.html">
+<link rel="import" href="../xp-emitter/xp-emitter.html">
+<script src="dist/xp-request.js"></script>
+
+<polymer-element name="xp-request" constructor="XPRequestElement" attributes="auth auto data debounce error headers host hostname keepAlive keepAliveMsecs localAddress method path port secure url">
+
+    <template>
+        <style>
+            :host {
+                display: none !important;
+            }
+        </style>
+    </template>
+
+    <script>
+        XPComponent({
+
+            /**
+             * Fired when a chunk of data is received.
+             *
+             * @event xp-request-chunk
+             * @param {Element} firer
+             * @param {Buffer | string} chunk
+             * @bubbles
+             */
+
+            /**
+             * Fired when the entire data is received.
+             *
+             * @event xp-request-data
+             * @param {Element} firer
+             * @param {Buffer | string} data
+             * @bubbles
+             */
+
+            /**
+             * Fired when the request fails.
+             *
+             * @event xp-request-fail
+             * @param {Element} firer
+             * @param {string} error
+             * @bubbles
+             */
+
+            /**
+             * Fired when a response is received.
+             *
+             * @event xp-request-response
+             * @param {Element} firer
+             * @bubbles
+             */
+
+            /**
+             * Fired when the request state changes.
+             *
+             * @event xp-request-state
+             * @param {Element} firer
+             * @param {string} state
+             * @bubbles
+             */
+
+            /*********************************************************************/
+
+            /**
+             * Aborts the request.
+             *
+             * @method abort
+             * @returns {Element}
+             */
+            abort: function () {
+                var self = this;
+                if (self.adaptee) { self.adaptee.abort(); }
+                return self;
+            },
+
+            /**
+             * Sends the request, appending data to the request body.
+             *
+             * @method send
+             * @param {Buffer | string} [data]
+             * @returns {Element}
+             */
+            send: function (data) {
+                var self = this;
+                self.adapt();
+                self.adaptee.send(data);
+                return self;
+            },
+
+            /*********************************************************************/
+
+            /**
+             * Creates the adaptee.
+             *
+             * @method adapt
+             * @returns {Element}
+             * @private
+             */
+            adapt: function () {
+
+                // Vars
+                var self = this;
+
+                // Adapting
+                self.adaptee = new XPRequest(self.url || {
+                    auth: self.auth,
+                    headers: self.headers,
+                    host: self.host,
+                    hostname: self.hostname,
+                    keepAlive: self.keepAlive,
+                    keepAliveMsecs: self.keepAliveMsecs,
+                    localAddress: self.localAddress,
+                    method: self.method,
+                    path: self.path,
+                    port: self.port,
+                    secure: self.secure
+                });
+
+                // Listening
+                self.adaptee.on('chunk', self.handleChunk.bind(self));
+                self.adaptee.on('data', self.handleData.bind(self));
+                self.adaptee.on('fail', self.handleFail.bind(self));
+                self.adaptee.on('response', self.handleResponse.bind(self));
+                self.adaptee.on('state', self.handleState.bind(self));
+
+                return self;
+            },
+
+            /**
+             * Checks if `adaptee` is expired.
+             *
+             * @method isExpired
+             * @param {Object} adaptee
+             * @returns {boolean}
+             * @private
+             */
+            isExpired: function (adaptee) {
+                XP.assertArgument(XP.isObject(adaptee), 1, 'Object');
+                return this.responded ? adaptee.timeSend < this.responded.timeSend : false;
+            },
+
+            /**
+             * Checks if `adaptee` is the current adaptee.
+             *
+             * @method isCurrent
+             * @param {Object} adaptee
+             * @returns {boolean}
+             * @private
+             */
+            isCurrent: function (adaptee) {
+                XP.assertArgument(XP.isObject(adaptee), 1, 'Object');
+                return adaptee === this.adaptee;
+            },
+
+            /**
+             * Refreshes the element.
+             *
+             * @method refresh
+             * @returns {Element}
+             * @private
+             */
+            refresh: function () {
+                var self = this;
+                self.jobSend = XP.debounce(function () { if (self.auto) { self.send(); } }, self.debounce);
+                return self;
+            },
+
+            /*********************************************************************/
+
+            // OBSERVE
+            observe: {
+                'auth headers host hostname keepAlive keepAliveMsecs localAddress method path port secure url': 'jobSend',
+                'debounce': 'refresh'
+            },
+
+            // PUBLISH
+            publish: {
+
+                /**
+                 * Basic authentication i.e. 'user:password' to compute an Authorization header.
+                 *
+                 * @attribute auth
+                 * @type string
+                 * @default ""
+                 */
+                auth: {reflect: true, value: ''},
+
+                /**
+                 * If set to true, the request is automatically sent.
+                 *
+                 * @attribute auto
+                 * @type boolean
+                 * @default false
+                 */
+                auto: {reflect: true, value: false},
+
+                /**
+                 * The request received data.
+                 *
+                 * @attribute data
+                 * @type Buffer | string
+                 * @readonly
+                 */
+                data: {reflect: false, value: null},
+
+                /**
+                 * The debounce ms between each request.
+                 *
+                 * @attribute debounce
+                 * @type number
+                 * @default 0
+                 */
+                debounce: {reflect: true, value: 0},
+
+                /**
+                 * The request error message.
+                 *
+                 * @attribute error
+                 * @type string
+                 * @default ""
+                 */
+                error: {reflect: true, value: ''},
+
+                /**
+                 * An object containing request headers.
+                 *
+                 * @attribute headers
+                 * @type Object
+                 */
+                headers: {reflect: false, value: null},
+
+                /**
+                 * A domain name or IP address of the server to issue the request to.
+                 *
+                 * @attribute host
+                 * @type string
+                 * @default "localhost"
+                 */
+                host: {reflect: true, value: 'localhost'},
+
+                /**
+                 * To support url.parse() hostname is preferred over host.
+                 *
+                 * @attribute hostname
+                 * @type string
+                 * @default ""
+                 */
+                hostname: {reflect: true, value: ''},
+
+                /**
+                 * Keep sockets around in a pool to be used by other requests in the future.
+                 *
+                 * @attribute keepAlive
+                 * @type boolean
+                 * @default false
+                 */
+                keepAlive: {reflect: true, value: false},
+
+                /**
+                 * When using HTTP KeepAlive, how often to send TCP KeepAlive packets over sockets being kept alive.
+                 *
+                 * @attribute keepAliveMsecs
+                 * @type number
+                 * @default 1000
+                 */
+                keepAliveMsecs: {reflect: true, value: 1000},
+
+                /**
+                 * Local interface to bind for network connections.
+                 *
+                 * @attribute localAddress
+                 * @type string
+                 * @default ""
+                 */
+                localAddress: {reflect: true, value: ''},
+
+                /**
+                 * A string specifying the HTTP request method.
+                 *
+                 * @attribute method
+                 * @type string
+                 * @default "GET"
+                 */
+                method: {reflect: true, value: 'GET'},
+
+                /**
+                 * Request path. Should include query string if any.
+                 *
+                 * @attribute path
+                 * @type string
+                 * @default "/"
+                 */
+                path: {reflect: true, value: '/'},
+
+                /**
+                 * Port of remote server.
+                 *
+                 * @attribute port
+                 * @type number
+                 * @default 80
+                 */
+                port: {reflect: true, value: 80},
+
+                /**
+                 * If set to true, the protocol is 'https' instead of 'http'.
+                 *
+                 * @attribute secure
+                 * @type boolean
+                 * @default false
+                 */
+                secure: {reflect: true, value: false},
+
+                /**
+                 * The request state.
+                 *
+                 * @attribute state
+                 * @type string
+                 * @default "idle"
+                 * @readonly
+                 */
+                state: {reflect: true, value: 'idle'},
+
+                /**
+                 * The request url.
+                 *
+                 * @attribute url
+                 * @type string
+                 * @default ""
+                 */
+                url: {reflect: true, value: ''}
+            },
+
+            /**
+             * The adapted object.
+             *
+             * @property adaptee
+             * @type Object
+             * @private
+             */
+            adaptee: null,
+
+            /**
+             * The debounced send job.
+             *
+             * @property jobSend
+             * @type Function
+             * @private
+             */
+            jobSend: null,
+
+            /**
+             * The responded adaptee.
+             *
+             * @property responded
+             * @type Object
+             * @private
+             */
+            responded: null,
+
+            /*********************************************************************/
+
+            // LISTENER
+            ready: function () {
+                this.refresh();
+            },
+
+            /*********************************************************************/
+
+            // HANDLER
+            handleChunk: function (chunk, adaptee) {
+                var self = this;
+                if (!self.isCurrent(adaptee)) { return; }
+                self.data  = null;
+                self.error = '';
+                self.fire('xp-request-chunk', {firer: self, chunk: chunk});
+            },
+
+            // HANDLER
+            handleData: function (data, adaptee) {
+                var self = this;
+                if (self.isExpired(adaptee)) { return; }
+                self.data  = data;
+                self.error = '';
+                self.fire('xp-request-data', {firer: self, data: data});
+            },
+
+            // HANDLER
+            handleFail: function (error, adaptee) {
+                var self = this;
+                if (self.isExpired(adaptee)) { return; }
+                self.data  = null;
+                self.error = error;
+                self.fire('xp-request-fail', {firer: self, error: error});
+            },
+
+            // HANDLER
+            handleResponse: function (adaptee) {
+                var self = this;
+                if (self.isExpired(adaptee)) { return; }
+                self.responded = adaptee;
+                self.fire('xp-request-response', {firer: self});
+            },
+
+            // HANDLER
+            handleState: function (state, adaptee) {
+                var self = this;
+                if (!self.isCurrent(adaptee)) { return; }
+                self.state = state;
+                self.fire('xp-request-state', {firer: self, state: state});
+            }
+        });
+    </script>
+
+</polymer-element>

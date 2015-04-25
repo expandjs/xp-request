@@ -1,0 +1,22 @@
+{
+  "name": "xp-request",
+  "license": "BSD-3-Clause",
+  "version": "0.8.0",
+  "description": "This component is used to perform XHR requests.",
+  "authors": [
+    "Giuliano Rullo <g.rullo@expandjs.com>",
+    "Maurizio Stefàno <m.stefano@expandjs.com>",
+    "Robert Manolea <r.manolea@expandjs.com>"
+  ],
+  "main": [
+    "xp-request.html"
+  ],
+  "keywords": [
+    "web-components"
+  ],
+  "dependencies": {
+    "expandjs": "ExpandJS/expandjs",
+    "xp-emitter": "ExpandJS/xp-emitter",
+    "polymer": "Polymer/polymer#^0.5"
+  }
+}
