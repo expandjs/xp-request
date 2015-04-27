@@ -2,7 +2,7 @@
   "name": "xp-request",
   "license": "BSD-3-Clause",
   "description": "This class is used to perform XHR requests.",
-  "version": "0.8.3",
+  "version": "0.8.4",
   "homepage": "https://github.com/ExpandJS/xp-request",
   "author": "ExpandJS <dev@expandjs.com> (http://www.expandjs.com)",
   "contributors": [
@@ -19,6 +19,7 @@
     "expandjs": "*"
   },
   "scripts": {
-    "browserify": "browserify index -i xp-emitter -i expandjs > dist/xp-request.js"
+    "browserify": "browserify index -i expandjs -i xp-emitter > dist/xp-request.js",
+    "browserify-min": "browserify -d index -i expandjs -i xp-emitter -p [minifyify --map xp-request.min.map --output dist/xp-request.min.map] > dist/xp-request.min.js"
   }
 }
