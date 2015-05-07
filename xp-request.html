@@ -23,7 +23,7 @@ This element is used to perform XHR requests.
 <link rel="import" href="../xp-emitter/xp-emitter.html">
 <script src="dist/xp-request.min.js"></script>
 
-<polymer-element name="xp-request" constructor="XPRequestElement" attributes="auth auto data debounce error headers host hostname keepAlive keepAliveMsecs localAddress method path port secure url">
+<polymer-element name="xp-request" constructor="XPRequestElement" attributes="auth auto data dataType debounce error headers host hostname keepAlive keepAliveMsecs localAddress method path port secure url">
 
     <template>
         <style>
@@ -125,6 +125,7 @@ This element is used to perform XHR requests.
                 // Adapting
                 self.adaptee = new XPRequest(self.url || {
                     auth: self.auth,
+                    dataType: self.dataType,
                     headers: self.headers,
                     host: self.host,
                     hostname: self.hostname,
@@ -190,7 +191,7 @@ This element is used to perform XHR requests.
 
             // OBSERVE
             observe: {
-                'auth headers host hostname keepAlive keepAliveMsecs localAddress method path port secure url': 'jobSend',
+                'auth dataType headers host hostname keepAlive keepAliveMsecs localAddress method path port secure url': 'jobSend',
                 'debounce': 'refresh'
             },
 
@@ -223,6 +224,15 @@ This element is used to perform XHR requests.
                  * @readonly
                  */
                 data: {reflect: false, value: null},
+
+                /**
+                 * The type of data expected back from the server.
+                 *
+                 * @attribute dataType
+                 * @type "json" | "text"
+                 * @default "text"
+                 */
+                dataType: {reflect: true, value: 'text'},
 
                 /**
                  * The debounce ms between each request.
