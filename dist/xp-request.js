@@ -6986,6 +6986,7 @@ module.exports = require('./lib');
          * @constructs
          * @param {Object | string} opt The request url or options.
          *   @param {string} [opt.auth] Basic authentication i.e. 'user:password' to compute an Authorization header.
+         *   @param {string} [opt.dataType = "text"] The type of data expected back from the server.
          *   @param {Object} [opt.headers] An object containing request headers.
          *   @param {string} [opt.host = "localhost"] A domain name or IP address of the server to issue the request to.
          *   @param {string} [opt.hostname] To support url.parse() hostname is preferred over host.
@@ -7106,6 +7107,23 @@ module.exports = require('./lib');
             }
         },
 
+        /**
+         * Parses the data
+         *
+         * @method parse
+         * @param {Buffer | string} data
+         * @returns {*}
+         * @private
+         */
+        parse: {
+            enumerable: true,
+            value: function (data) {
+                var self = this, type = self.options.dataType;
+                if (type === 'json') { return JSON.parse(data); }
+                return data;
+            }
+        },
+
         /*********************************************************************/
 
         /**
@@ -7141,7 +7159,21 @@ module.exports = require('./lib');
          * @readonly
          */
         data: {
-            validate: function (val) { return Buffer.isBuffer(val) || XP.isString(val); }
+            validate: function (val) { return XP.isString(val) || Buffer.isBuffer(val); }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property dataTypes
+         * @type Array
+         * @default ["json", "text"]
+         * @readonly
+         */
+        dataTypes: {
+            frozen: true,
+            writable: false,
+            value: ['json', 'text']
         },
 
         /**
@@ -7263,10 +7295,19 @@ module.exports = require('./lib');
             // Vars
             var self = this;
 
-            // Setting
-            self.data     = XP.isString(self.chunks[0]) ? self.chunks.join('') : Buffer.concat(self.chunks);
-            self.state    = 'received';
-            self.timeData = Date.now();
+            // Trying
+            try {
+
+                // Setting
+                self.data     = self.parse(Buffer.isBuffer(self.chunks[0]) ? Buffer.concat(self.chunks) : self.chunks.join(''));
+                self.state    = 'received';
+                self.timeData = Date.now();
+
+            } catch (exc) {
+
+                // Handling
+                return self.handleError(exc.message);
+            }
 
             // Resolving
             self.resolver(null, self.data);
