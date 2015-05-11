@@ -7069,12 +7069,15 @@ module.exports = require('./lib');
                 XPEmitter.call(self);
 
                 // Setting
-                self.chunks   = [];
-                self.options  = XP.isString(opt) ? {} : opt;
-                self.dataType = self.options.dataType;
-                self.url      = self.options.url;
-                self.resolver = resolver;
-                self.state    = 'idle';
+                self.chunks    = [];
+                self.options   = XP.isString(opt) ? {} : opt;
+                self.dataType  = self.options.dataType;
+                self.headers   = self.options.headers;
+                self.keepAlive = self.options.keepAlive;
+                self.method    = self.options.method;
+                self.url       = self.options.url;
+                self.resolver  = resolver;
+                self.state     = 'idle';
 
                 // Adapting
                 self.adapt();
@@ -7259,6 +7262,40 @@ module.exports = require('./lib');
         /**
          * TODO DOC
          *
+         * @property header
+         * @type Object
+         */
+        headers: {
+            set: function (val) { return this.headers || val; },
+            validate: function (val) { return XP.isObject(val); }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property keepAlive
+         * @type number
+         * @default 0
+         */
+        keepAlive: {
+            set: function (val) { return this.keepAlive >= 0 ? this.keepAlive : val; },
+            validate: function (val) { return XP.isInt(val, true); }
+        },
+
+        /**
+         * TODO DOC
+         * @property method
+         * @type string
+         * @default "GET"
+         */
+        method: {
+            set: function (val) { return this.method || XP.upperCase(val); },
+            validate: function (val) { return XP.isString(val, true); }
+        },
+
+        /**
+         * TODO DOC
+         *
          * @property secure
          * @type boolean
          * @readonly
@@ -7346,7 +7383,6 @@ module.exports = require('./lib');
          *
          * @property url
          * @type string
-         * @readonly
          */
         url: {
             set: function (val) { return this.url || val; },
