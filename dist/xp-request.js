@@ -7072,7 +7072,7 @@ module.exports = require('./lib');
                 self.chunks    = [];
                 self.options   = XP.isString(opt) ? {} : opt;
                 self.dataType  = self.options.dataType;
-                self.headers   = self.options.headers;
+                self.headers   = self.options.headers || {};
                 self.keepAlive = self.options.keepAlive;
                 self.method    = self.options.method;
                 self.url       = self.options.url;
@@ -7164,7 +7164,7 @@ module.exports = require('./lib');
                 // Adapting
                 self.adaptee = protocol.request({
                     auth: parsed.auth,
-                    headers: self.options.headers || {},
+                    headers: self.options.headers,
                     hostname: parsed.hostname || global.location.hostname,
                     keepAlive: self.options.keepAlive > 0,
                     keepAliveMsecs: Math.max(self.options.keepAlive, 0),
