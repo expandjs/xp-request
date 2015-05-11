@@ -6960,7 +6960,7 @@ module.exports = require('./lib');
 
 }(typeof window !== 'undefined' ? window : null));
 },{}],38:[function(require,module,exports){
-(function (Buffer){
+(function (global,Buffer){
 /*jslint browser: true, devel: true, node: true, ass: true, nomen: true, unparam: true, indent: 4 */
 
 /**
@@ -6970,7 +6970,7 @@ module.exports = require('./lib');
  * The complete set of authors may be found at https://expandjs.github.io/AUTHORS.txt
  * The complete set of contributors may be found at https://expandjs.github.io/CONTRIBUTORS.txt
  */
-(function () {
+(function (global) {
     "use strict";
 
     // Vars
@@ -6993,6 +6993,15 @@ module.exports = require('./lib');
 
         // EXTENDS
         extends: XPEmitter,
+
+        // OPTIONS
+        options: {
+            dataType: 'text',
+            headers: null,
+            keepAlive: 0,
+            method: 'GET',
+            url: ''
+        },
 
         /*********************************************************************/
 
@@ -7042,8 +7051,7 @@ module.exports = require('./lib');
          * @param {Object | string} opt The request url or options.
          *   @param {string} [opt.dataType = "text"] The type of data expected back from the server.
          *   @param {Object} [opt.headers] An object containing request headers.
-         *   @param {boolean} [opt.keepAlive = false] Keep sockets around in a pool to be used by other requests in the future.
-         *   @param {number} [opt.keepAliveMsecs = 1000] When using HTTP KeepAlive, how often to send TCP KeepAlive packets over sockets being kept alive.
+         *   @param {number} [opt.keepAlive = 0] How often to send TCP KeepAlive packets over sockets being kept alive.
          *   @param {string} [opt.method = "GET"] A string specifying the HTTP request method.
          *   @param {string} opt.url The request url.
          */
@@ -7061,9 +7069,10 @@ module.exports = require('./lib');
                 XPEmitter.call(self);
 
                 // Setting
-                self.options  = XP.isString(opt) ? {} : opt;
-                self.url      = XP.isString(opt) ? opt : opt.url;
                 self.chunks   = [];
+                self.options  = XP.isString(opt) ? {} : opt;
+                self.dataType = self.options.dataType;
+                self.url      = self.options.url;
                 self.resolver = resolver;
                 self.state    = 'idle';
 
@@ -7144,18 +7153,22 @@ module.exports = require('./lib');
             value: function () {
 
                 // Vars
-                var self = this,
-                    opt  = XP.parseURL(self.url);
+                var parsed   = XP.parseURL(this.url),
+                    self     = XP.assign(this, {secure: (parsed.protocol || global.location.protocol) === 'https:'}),
+                    port     = self.secure ? 443 : 80,
+                    protocol = self.secure ? https : http;
 
                 // Adapting
-                //self.adaptee = self.protocol.request({
-                //    auth: opt.auth,
-                //    host: opt.host,
-                //    method: self.options.method,
-                //    path: opt.path + opt.hash
-                //    path: XP.toURL(self.options.path, self.options.data, true),
-                //    port: self.options.port || (self.options.secure ? 443 : 80)
-                //}));
+                self.adaptee = protocol.request({
+                    auth: parsed.auth,
+                    headers: self.options.headers || {},
+                    hostname: parsed.hostname || global.location.hostname,
+                    keepAlive: self.options.keepAlive > 0,
+                    keepAliveMsecs: Math.max(self.options.keepAlive, 0),
+                    method: self.options.method,
+                    path: parsed.path + (parsed.hash || ''),
+                    port: self.options.port || (parsed.hostname && port) || global.location.port
+                });
 
                 return self;
             }
@@ -7172,8 +7185,8 @@ module.exports = require('./lib');
         parse: {
             enumerable: true,
             value: function (data) {
-                var self = this, type = self.options.dataType;
-                if (type === 'json') { return JSON.parse(data); }
+                var self = this;
+                if (self.dataType === 'json') { return JSON.parse(data); }
                 return data;
             }
         },
@@ -7199,6 +7212,7 @@ module.exports = require('./lib');
          * @property chunks
          * @type Array
          * @readonly
+         * @private
          */
         chunks: {
             set: function (val) { return this.chunks || val; },
@@ -7219,6 +7233,18 @@ module.exports = require('./lib');
         /**
          * TODO DOC
          *
+         * @property dataType
+         * @type string
+         * @default "text"
+         */
+        dataType: {
+            set: function (val) { return this.dataType || val; },
+            validate: function (val) { return XP.includes(this.dataTypes, val); }
+        },
+
+        /**
+         * TODO DOC
+         *
          * @property dataTypes
          * @type Array
          * @default ["json", "text"]
@@ -7233,13 +7259,12 @@ module.exports = require('./lib');
         /**
          * TODO DOC
          *
-         * @property protocol
-         * @type Object
+         * @property secure
+         * @type boolean
          * @readonly
          */
-        protocol: {
-            enumerable: false,
-            get: function () { return this.options.secure ? https : http; }
+        secure: {
+            set: function (val) { return XP.isBoolean(this.secure) ? this.secure : !!val; }
         },
 
         /**
@@ -7413,8 +7438,8 @@ module.exports = require('./lib');
     // Browserify
     XP.browserify(module.exports, 'XPRequest');
 
-}());
-}).call(this,require("buffer").Buffer)
+}(typeof window !== "undefined" ? window : global));
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("buffer").Buffer)
 },{"buffer":3,"expandjs":1,"http":8,"https":12,"xp-emitter":1,"xp-load":36}],39:[function(require,module,exports){
 arguments[4][36][0].apply(exports,arguments)
 },{"./lib":38,"dup":36}]},{},[39]);
