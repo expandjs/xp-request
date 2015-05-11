@@ -7164,13 +7164,13 @@ module.exports = require('./lib');
                 // Adapting
                 self.adaptee = protocol.request({
                     auth: parsed.auth,
-                    headers: self.options.headers,
+                    headers: self.headers,
                     hostname: parsed.hostname || global.location.hostname,
-                    keepAlive: self.options.keepAlive > 0,
-                    keepAliveMsecs: Math.max(self.options.keepAlive, 0),
-                    method: self.options.method,
+                    keepAlive: self.keepAlive > 0,
+                    keepAliveMsecs: Math.max(self.keepAlive, 0),
+                    method: self.method,
                     path: parsed.path + (parsed.hash || ''),
-                    port: self.options.port || (parsed.hostname && port) || global.location.port
+                    port: parsed.port || (parsed.hostname && port) || global.location.port
                 });
 
                 return self;
