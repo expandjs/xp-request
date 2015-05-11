@@ -7040,18 +7040,12 @@ module.exports = require('./lib');
         /**
          * @constructs
          * @param {Object | string} opt The request url or options.
-         *   @param {string} [opt.auth] Basic authentication i.e. 'user:password' to compute an Authorization header.
          *   @param {string} [opt.dataType = "text"] The type of data expected back from the server.
          *   @param {Object} [opt.headers] An object containing request headers.
-         *   @param {string} [opt.host = "localhost"] A domain name or IP address of the server to issue the request to.
-         *   @param {string} [opt.hostname] To support url.parse() hostname is preferred over host.
          *   @param {boolean} [opt.keepAlive = false] Keep sockets around in a pool to be used by other requests in the future.
          *   @param {number} [opt.keepAliveMsecs = 1000] When using HTTP KeepAlive, how often to send TCP KeepAlive packets over sockets being kept alive.
-         *   @param {string} [opt.localAddress] Local interface to bind for network connections.
          *   @param {string} [opt.method = "GET"] A string specifying the HTTP request method.
-         *   @param {string} [opt.path = "/"] Request path. Should include query string if any.
-         *   @param {number} [opt.port = 80] Port of remote server.
-         *   @param {boolean} [opt.secure = false] If set the protocol will be 'https', else 'http'.
+         *   @param {string} opt.url The request url.
          */
         initialize: {
             promise: true,
@@ -7068,7 +7062,7 @@ module.exports = require('./lib');
 
                 // Setting
                 self.options  = XP.isString(opt) ? {} : opt;
-                self.url      = XP.isString(opt) ? opt : '';
+                self.url      = XP.isString(opt) ? opt : opt.url;
                 self.chunks   = [];
                 self.resolver = resolver;
                 self.state    = 'idle';
@@ -7150,13 +7144,18 @@ module.exports = require('./lib');
             value: function () {
 
                 // Vars
-                var self = this;
+                var self = this,
+                    opt  = XP.parseURL(self.url);
 
                 // Adapting
-                self.adaptee = self.protocol.request(self.url || XP.assign({}, self.options, {
-                    path: XP.toURL(self.options.path, self.options.data, true),
-                    port: self.options.port || (self.options.secure ? 443 : 80)
-                }));
+                //self.adaptee = self.protocol.request({
+                //    auth: opt.auth,
+                //    host: opt.host,
+                //    method: self.options.method,
+                //    path: opt.path + opt.hash
+                //    path: XP.toURL(self.options.path, self.options.data, true),
+                //    port: self.options.port || (self.options.secure ? 443 : 80)
+                //}));
 
                 return self;
             }

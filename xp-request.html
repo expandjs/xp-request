@@ -24,7 +24,7 @@ This element is used to perform XHR requests.
 <link rel="import" href="../xp-emitter/xp-emitter.html">
 <script src="dist/xp-request.min.js"></script>
 
-<polymer-element name="xp-request" constructor="XPRequestElement" attributes="auth auto data dataType debounce error headers host hostname keepAlive keepAliveMsecs localAddress method path port secure url">
+<polymer-element name="xp-request" constructor="XPRequestElement" attributes="auto data dataType debounce error headers keepAlive method url">
 
     <template>
         <style>
@@ -124,19 +124,12 @@ This element is used to perform XHR requests.
                 var self = this;
 
                 // Adapting
-                self.adaptee = new XPRequest(self.url || {
-                    auth: self.auth,
+                self.adaptee = new XPRequest({
                     dataType: self.dataType,
                     headers: self.headers,
-                    host: self.host,
-                    hostname: self.hostname,
                     keepAlive: self.keepAlive,
-                    keepAliveMsecs: self.keepAliveMsecs,
-                    localAddress: self.localAddress,
                     method: self.method,
-                    path: self.path,
-                    port: self.port,
-                    secure: self.secure
+                    url: self.url
                 });
 
                 // Listening
@@ -192,21 +185,12 @@ This element is used to perform XHR requests.
 
             // OBSERVE
             observe: {
-                'auth dataType headers host hostname keepAlive keepAliveMsecs localAddress method path port secure url': 'jobSend',
+                'dataType headers keepAlive method url': 'jobSend',
                 'debounce': 'refresh'
             },
 
             // PUBLISH
             publish: {
-
-                /**
-                 * Basic authentication i.e. 'user:password' to compute an Authorization header.
-                 *
-                 * @attribute auth
-                 * @type string
-                 * @default ""
-                 */
-                auth: {reflect: true, value: ''},
 
                 /**
                  * If set to true, the request is automatically sent.
@@ -262,49 +246,13 @@ This element is used to perform XHR requests.
                 headers: {reflect: false, value: null},
 
                 /**
-                 * A domain name or IP address of the server to issue the request to.
-                 *
-                 * @attribute host
-                 * @type string
-                 * @default "localhost"
-                 */
-                host: {reflect: true, value: 'localhost'},
-
-                /**
-                 * To support url.parse() hostname is preferred over host.
-                 *
-                 * @attribute hostname
-                 * @type string
-                 * @default ""
-                 */
-                hostname: {reflect: true, value: ''},
-
-                /**
-                 * Keep sockets around in a pool to be used by other requests in the future.
+                 * How often to send TCP KeepAlive packets over sockets being kept alive.
                  *
                  * @attribute keepAlive
-                 * @type boolean
-                 * @default false
-                 */
-                keepAlive: {reflect: true, value: false},
-
-                /**
-                 * When using HTTP KeepAlive, how often to send TCP KeepAlive packets over sockets being kept alive.
-                 *
-                 * @attribute keepAliveMsecs
                  * @type number
-                 * @default 1000
+                 * @default 0
                  */
-                keepAliveMsecs: {reflect: true, value: 1000},
-
-                /**
-                 * Local interface to bind for network connections.
-                 *
-                 * @attribute localAddress
-                 * @type string
-                 * @default ""
-                 */
-                localAddress: {reflect: true, value: ''},
+                keepAlive: {reflect: true, value: 0},
 
                 /**
                  * A string specifying the HTTP request method.
@@ -314,33 +262,6 @@ This element is used to perform XHR requests.
                  * @default "GET"
                  */
                 method: {reflect: true, value: 'GET'},
-
-                /**
-                 * Request path. Should include query string if any.
-                 *
-                 * @attribute path
-                 * @type string
-                 * @default "/"
-                 */
-                path: {reflect: true, value: '/'},
-
-                /**
-                 * Port of remote server.
-                 *
-                 * @attribute port
-                 * @type number
-                 * @default 80
-                 */
-                port: {reflect: true, value: 80},
-
-                /**
-                 * If set to true, the protocol is 'https' instead of 'http'.
-                 *
-                 * @attribute secure
-                 * @type boolean
-                 * @default false
-                 */
-                secure: {reflect: true, value: false},
 
                 /**
                  * The request state.
