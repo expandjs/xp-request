@@ -69,6 +69,7 @@ This element is used to perform XHR requests.
              *
              * @event xp-request-response
              * @param {Element} firer
+             * @param {Object} response
              * @bubbles
              */
 
@@ -264,6 +265,15 @@ This element is used to perform XHR requests.
                 method: {reflect: true, value: 'GET'},
 
                 /**
+                 * The request received response.
+                 *
+                 * @attribute response
+                 * @type Object
+                 * @readonly
+                 */
+                response: {reflect: false, value: null},
+
+                /**
                  * The request state.
                  *
                  * @attribute state
@@ -347,10 +357,11 @@ This element is used to perform XHR requests.
             },
 
             // HANDLER
-            handleResponse: function (adaptee) {
+            handleResponse: function (response, adaptee) {
                 var self = this;
                 if (self.isExpired(adaptee)) { return; }
                 self.responded = adaptee;
+                self.response  = response;
                 self.fire('xp-request-response', {firer: self});
             },
 

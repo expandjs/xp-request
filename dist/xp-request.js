@@ -7033,6 +7033,7 @@ module.exports = require('./lib');
          * Emitted when a response is received.
          *
          * @event response
+         * @param {Object} response
          * @param {Object} emitter
          */
 
@@ -7295,6 +7296,17 @@ module.exports = require('./lib');
 
         /**
          * TODO DOC
+         * @property response
+         * @type Object
+         * @readonly
+         */
+        response: {
+            set: function (val) { return this.response || val; },
+            validate: function (val) { return XP.isObject(val); }
+        },
+
+        /**
+         * TODO DOC
          *
          * @property secure
          * @type boolean
@@ -7446,7 +7458,7 @@ module.exports = require('./lib');
             self.resolver(error);
 
             // Emitting
-            self.emit('response', self);
+            self.emit('response', null, self);
             self.emit('fail', error, self);
         },
 
@@ -7457,6 +7469,7 @@ module.exports = require('./lib');
             var self = this;
 
             // Setting
+            self.response     = response;
             self.state        = 'receiving';
             self.timeResponse = Date.now();
 
@@ -7465,7 +7478,7 @@ module.exports = require('./lib');
             response.on('end', self.handleEnd.bind(self));
 
             // Emitting
-            self.emit('response', self);
+            self.emit('response', response, self);
         }
     });
 
