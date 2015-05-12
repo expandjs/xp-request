@@ -56,9 +56,9 @@ This element is used to perform XHR requests.
              */
 
             /**
-             * Fired when the request fails.
+             * Fired when an error is received.
              *
-             * @event xp-request-fail
+             * @event xp-request-error
              * @param {Element} firer
              * @param {string} error
              * @bubbles
@@ -136,7 +136,7 @@ This element is used to perform XHR requests.
                 // Listening
                 self.adaptee.on('chunk', self.handleChunk.bind(self));
                 self.adaptee.on('data', self.handleData.bind(self));
-                self.adaptee.on('fail', self.handleFail.bind(self));
+                self.adaptee.on('error', self.handleError.bind(self));
                 self.adaptee.on('response', self.handleResponse.bind(self));
                 self.adaptee.on('state', self.handleState.bind(self));
 
@@ -348,12 +348,12 @@ This element is used to perform XHR requests.
             },
 
             // HANDLER
-            handleFail: function (error, adaptee) {
+            handleError: function (error, adaptee) {
                 var self = this;
                 if (self.isExpired(adaptee)) { return; }
                 self.data  = null;
                 self.error = error;
-                self.fire('xp-request-fail', {firer: self, error: error});
+                self.fire('xp-request-error', {firer: self, error: error});
             },
 
             // HANDLER
