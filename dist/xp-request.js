@@ -7022,9 +7022,9 @@ module.exports = require('./lib');
          */
 
         /**
-         * Emitted when the request fails.
+         * Emitted when an error is received.
          *
-         * @event fail
+         * @event error
          * @param {string} error
          * @param {Object} emitter
          */
@@ -7459,7 +7459,7 @@ module.exports = require('./lib');
 
             // Emitting
             self.emit('response', null, self);
-            self.emit('fail', error, self);
+            self.emit('error', error, self);
         },
 
         // HANDLER
