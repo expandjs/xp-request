@@ -124,6 +124,9 @@ This element is used to perform XHR requests.
                 // Vars
                 var self = this;
 
+                // Checking
+                if (!self.url) { return self; }
+
                 // Adapting
                 self.adaptee = new XPRequest({
                     dataType: self.dataType,
