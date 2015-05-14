@@ -7156,9 +7156,6 @@ module.exports = require('./lib');
             enumerable: false,
             value: function () {
 
-                // Checking
-                if (!this.url) { return this; }
-
                 // Vars
                 var parsed   = XP.parseURL(this.url),
                     self     = XP.assign(this, {secure: (parsed.protocol || global.location.protocol) === 'https:'}),
@@ -7401,7 +7398,7 @@ module.exports = require('./lib');
          */
         url: {
             set: function (val) { return this.url || val; },
-            validate: function (val) { return XP.isString(val); }
+            validate: function (val) { return XP.isString(val, true); }
         },
 
         /*********************************************************************/

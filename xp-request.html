@@ -104,9 +104,8 @@ This element is used to perform XHR requests.
              * @returns {Element}
              */
             send: function (data) {
-                var self = this;
-                self.adapt();
-                self.adaptee.send(data);
+                var self = this.adapt();
+                if (self.adaptee) { self.adaptee.send(data); }
                 return self;
             },
 
