@@ -6953,8 +6953,8 @@ function hasOwnProperty(obj, prop) {
     // Vars
     var http      = require('http'),
         https     = require('https'),
-        XP        = require('expandjs'),
-        XPEmitter = require('xp-emitter');
+        XP        = global.XP || require('expandjs'),
+        XPEmitter = global.XPEmitter || require('xp-emitter');
 
     /*********************************************************************/
 
