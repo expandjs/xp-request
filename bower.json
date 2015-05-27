@@ -20,12 +20,7 @@
     "xp-request.html"
   ],
   "ignore": [
-    "**/.*",
-    "bin",
-    "index.js",
-    "lib",
-    "node_modules",
-    "package.json"
+    "**/.*"
   ],
   "dependencies": {
     "expandjs": "ExpandJS/expandjs",
