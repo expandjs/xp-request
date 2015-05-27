@@ -1,4 +1,4 @@
-(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.XPRequest = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 
 },{}],2:[function(require,module,exports){
 arguments[4][1][0].apply(exports,arguments)
@@ -6937,29 +6937,6 @@ function hasOwnProperty(obj, prop) {
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{"./support/isBuffer":34,"_process":15,"inherits":13}],36:[function(require,module,exports){
-/*jslint browser: true, devel: true, node: true, ass: true, nomen: true, unparam: true, indent: 4 */
-
-module.exports = require('./lib');
-},{"./lib":37}],37:[function(require,module,exports){
-/*jslint browser: true, devel: true, node: true, ass: true, nomen: true, unparam: true, indent: 4 */
-
-(function (window) {
-    "use strict";
-
-    /**
-     * Returns required or a browser's global
-     *
-     * @param {Function | Object} required
-     * @param {string} browserName
-     * @returns {*}
-     */
-    module.exports = function (required, browserName) {
-        if (required && (typeof required !== 'object' || Object.keys(required).length)) { return required; }
-        if (window && typeof browserName === 'string') { return window[browserName]; }
-    };
-
-}(typeof window !== 'undefined' ? window : null));
-},{}],38:[function(require,module,exports){
 (function (global,Buffer){
 /*jslint browser: true, devel: true, node: true, ass: true, nomen: true, unparam: true, indent: 4 */
 
@@ -6976,9 +6953,8 @@ module.exports = require('./lib');
     // Vars
     var http      = require('http'),
         https     = require('https'),
-        load      = require('xp-load'),
-        XP        = load(require('expandjs'), 'XP'),
-        XPEmitter = load(require('xp-emitter'), 'XPEmitter');
+        XP        = require('expandjs'),
+        XPEmitter = require('xp-emitter');
 
     /*********************************************************************/
 
@@ -7482,13 +7458,11 @@ module.exports = require('./lib');
         }
     });
 
-    /*********************************************************************/
-
-    // Browserify
-    XP.browserify(module.exports, 'XPRequest');
-
 }(typeof window !== "undefined" ? window : global));
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("buffer").Buffer)
-},{"buffer":3,"expandjs":1,"http":8,"https":12,"xp-emitter":1,"xp-load":36}],39:[function(require,module,exports){
-arguments[4][36][0].apply(exports,arguments)
-},{"./lib":38,"dup":36}]},{},[39]);
+},{"buffer":3,"expandjs":1,"http":8,"https":12,"xp-emitter":1}],37:[function(require,module,exports){
+/*jslint browser: true, devel: true, node: true, ass: true, nomen: true, unparam: true, indent: 4 */
+
+module.exports = require('./lib');
+},{"./lib":36}]},{},[37])(37)
+});
