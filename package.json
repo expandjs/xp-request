@@ -16,8 +16,7 @@
   },
   "dependencies": {
     "expandjs": "*",
-    "xp-emitter": "*",
-    "xp-load": "*"
+    "xp-emitter": "*"
   },
   "scripts": {
     "build": "browserify index -i expandjs -i xp-emitter --standalone XPRequest > dist/xp-request.js && npm run build:min",
