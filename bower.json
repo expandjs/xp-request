@@ -1,7 +1,7 @@
 {
   "name": "xp-request",
   "license": "BSD-3-Clause",
-  "version": "0.8.10",
+  "version": "0.8.11",
   "description": "This element is used to perform XHR requests.",
   "homepage": "http://expandjs.com/elements/xp-request",
   "authors": [
