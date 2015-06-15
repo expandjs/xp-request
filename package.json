@@ -15,7 +15,7 @@
     "url": "https://github.com/ExpandJS/xp-request.git"
   },
   "dependencies": {
-    "expandjs": "*",
+    "expandjs": "^0.8.12",
     "xp-emitter": "*"
   },
   "scripts": {
