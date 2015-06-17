@@ -10,12 +10,12 @@ The complete set of contributors may be found at https://expandjs.github.io/CONT
 This element is used to perform XHR requests.
 
 @element xp-request
-@description This element is used to perform XHR requests.
+@description This element is used to perform XHR requests
 @keywords nodejs, web app, javascript, expandjs, web-components
 @group functionality
 @homepage http://expandjs.com/elements/xp-request
 
-@dependency polymer Polymer/polymer#^0.5
+@dependency polymer Polymer/polymer
 @dependency expandjs ExpandJS/expandjs
 @dependency xp-emitter ExpandJS/xp-emitter
 -->
@@ -25,362 +25,453 @@ This element is used to perform XHR requests.
 <link rel="import" href="../xp-emitter/xp-emitter.html">
 <script src="dist/xp-request.min.js"></script>
 
-<polymer-element name="xp-request" attributes="auto data dataType debounce error headers keepAlive method url">
+<script>
+    Polymer({
 
-    <template>
-        <style>
-            :host {
-                display: none !important;
-            }
-        </style>
-    </template>
+        // ELEMENT
+        is: 'xp-request',
 
-    <script>
-        XPElement({
+        /*********************************************************************/
 
-            // ELEMENT
-            is: 'xp-request',
+        /**
+         * Fired when a chunk of data is received.
+         *
+         * @event xp-request-chunk
+         * @param {Element} firer
+         * @param {Buffer | string} chunk
+         * @bubbles
+         */
 
-            /*********************************************************************/
+        /**
+         * Fired when the entire data is received.
+         *
+         * @event xp-request-data
+         * @param {Element} firer
+         * @param {Buffer | string} data
+         * @bubbles
+         */
 
-            /**
-             * Fired when a chunk of data is received.
-             *
-             * @event xp-request-chunk
-             * @param {Element} firer
-             * @param {Buffer | string} chunk
-             * @bubbles
-             */
+        /**
+         * Fired when an error is received.
+         *
+         * @event xp-request-error
+         * @param {Element} firer
+         * @param {string} error
+         * @bubbles
+         */
 
-            /**
-             * Fired when the entire data is received.
-             *
-             * @event xp-request-data
-             * @param {Element} firer
-             * @param {Buffer | string} data
-             * @bubbles
-             */
+        /**
+         * Fired when a response is received.
+         *
+         * @event xp-request-response
+         * @param {Element} firer
+         * @param {Object} response
+         * @bubbles
+         */
 
-            /**
-             * Fired when an error is received.
-             *
-             * @event xp-request-error
-             * @param {Element} firer
-             * @param {string} error
-             * @bubbles
-             */
+        /**
+         * Fired when the request state changes.
+         *
+         * @event xp-request-state
+         * @param {Element} firer
+         * @param {string} state
+         * @bubbles
+         */
 
-            /**
-             * Fired when a response is received.
-             *
-             * @event xp-request-response
-             * @param {Element} firer
-             * @param {Object} response
-             * @bubbles
-             */
+        /*********************************************************************/
 
-            /**
-             * Fired when the request state changes.
-             *
-             * @event xp-request-state
-             * @param {Element} firer
-             * @param {string} state
-             * @bubbles
-             */
+        /**
+         * Aborts the request.
+         *
+         * @method abort
+         * @returns {Element}
+         */
+        abort: function () {
+            var self = this;
+            if (self.adaptee) { self.adaptee.abort(); }
+            return self;
+        },
 
-            /*********************************************************************/
+        /**
+         * Sends the request, appending data to the request body.
+         *
+         * @method send
+         * @param {Buffer | string} [data]
+         * @returns {Element}
+         */
+        send: function (data) {
+            var self = this._adapt();
+            if (self.adaptee) { self.adaptee.send(data); }
+            return self;
+        },
 
-            /**
-             * Aborts the request.
-             *
-             * @method abort
-             * @returns {Element}
-             */
-            abort: function () {
-                var self = this;
-                if (self.adaptee) { self.adaptee.abort(); }
-                return self;
-            },
+        /*********************************************************************/
 
-            /**
-             * Sends the request, appending data to the request body.
-             *
-             * @method send
-             * @param {Buffer | string} [data]
-             * @returns {Element}
-             */
-            send: function (data) {
-                var self = this.adapt();
-                if (self.adaptee) { self.adaptee.send(data); }
-                return self;
-            },
+        /**
+         * Creates the adaptee.
+         *
+         * @method _adapt
+         * @returns {Element}
+         * @private
+         */
+        _adapt: function () {
 
-            /*********************************************************************/
+            // Vars
+            var self = this;
 
-            /**
-             * Creates the adaptee.
-             *
-             * @method adapt
-             * @returns {Element}
-             * @private
-             */
-            adapt: function () {
+            // Checking
+            if (!self.url) { return self; }
 
-                // Vars
-                var self = this;
+            // Adapting
+            self._setAdaptee(new XPRequest({
+                dataType: self.dataType,
+                headers: self.headers,
+                keepAlive: self.keepAlive,
+                method: self.method,
+                url: self.url
+            }));
 
-                // Checking
-                if (!self.url) { return self; }
+            // Listening
+            self.adaptee.on('chunk', self._handleChunkBound);
+            self.adaptee.on('data', self._handleDataBound);
+            self.adaptee.on('error', self._handleErrorBound);
+            self.adaptee.on('response', self._handleResponseBound);
+            self.adaptee.on('state', self._handleStateBound);
 
-                // Adapting
-                self.adaptee = new XPRequest({
-                    dataType: self.dataType,
-                    headers: self.headers,
-                    keepAlive: self.keepAlive,
-                    method: self.method,
-                    url: self.url
-                });
+            return self;
+        },
 
-                // Listening
-                self.adaptee.on('chunk', self.handleChunk.bind(self));
-                self.adaptee.on('data', self.handleData.bind(self));
-                self.adaptee.on('error', self.handleError.bind(self));
-                self.adaptee.on('response', self.handleResponse.bind(self));
-                self.adaptee.on('state', self.handleState.bind(self));
+        /**
+         * Checks if `adaptee` is expired.
+         *
+         * @method _isExpired
+         * @param {Object} adaptee
+         * @returns {boolean}
+         * @private
+         */
+        _isExpired: function (adaptee) {
+            XP.assertArgument(XP.isObject(adaptee), 1, 'Object');
+            return this.responded ? adaptee.timeSend < this.responded.timeSend : false;
+        },
 
-                return self;
-            },
+        /**
+         * Checks if `adaptee` is the current adaptee.
+         *
+         * @method _isCurrent
+         * @param {Object} adaptee
+         * @returns {boolean}
+         * @private
+         */
+        _isCurrent: function (adaptee) {
+            XP.assertArgument(XP.isObject(adaptee), 1, 'Object');
+            return adaptee === this.adaptee;
+        },
 
-            /**
-             * Checks if `adaptee` is expired.
-             *
-             * @method isExpired
-             * @param {Object} adaptee
-             * @returns {boolean}
-             * @private
-             */
-            isExpired: function (adaptee) {
-                XP.assertArgument(XP.isObject(adaptee), 1, 'Object');
-                return this.responded ? adaptee.timeSend < this.responded.timeSend : false;
-            },
+        /**
+         * Refreshes the element.
+         *
+         * @method _refresh
+         * @returns {Element}
+         * @private
+         */
+        _refresh: function () {
+            var self = this;
+            self._jobSend = XP.debounce(function () { if (self.auto) { self.send(); } }, self.debounce || 0);
+            return self;
+        },
 
-            /**
-             * Checks if `adaptee` is the current adaptee.
-             *
-             * @method isCurrent
-             * @param {Object} adaptee
-             * @returns {boolean}
-             * @private
-             */
-            isCurrent: function (adaptee) {
-                XP.assertArgument(XP.isObject(adaptee), 1, 'Object');
-                return adaptee === this.adaptee;
-            },
+        /*********************************************************************/
 
-            /**
-             * Refreshes the element.
-             *
-             * @method refresh
-             * @returns {Element}
-             * @private
-             */
-            refresh: function () {
-                var self = this;
-                self.jobSend = XP.debounce(function () { if (self.auto) { self.send(); } }, self.debounce);
-                return self;
-            },
+        // OBSERVERS
+        observers: [
+            '_jobSend(dataType, headers, keepAlive, method, url)',
+            '_refresh(debounce)'
+        ],
 
-            /*********************************************************************/
-
-            // OBSERVE
-            observe: {
-                'dataType headers keepAlive method url': 'jobSend',
-                'debounce': 'refresh'
-            },
-
-            // PUBLISH
-            publish: {
-
-                /**
-                 * If set to true, the request is automatically sent.
-                 *
-                 * @attribute auto
-                 * @type boolean
-                 * @default false
-                 */
-                auto: {reflect: true, value: false},
-
-                /**
-                 * The request received data.
-                 *
-                 * @attribute data
-                 * @type Buffer | string
-                 * @readonly
-                 */
-                data: {reflect: false, value: null},
-
-                /**
-                 * The type of data expected back from the server.
-                 *
-                 * @attribute dataType
-                 * @type "json" | "text"
-                 * @default "text"
-                 */
-                dataType: {reflect: true, value: 'text'},
-
-                /**
-                 * The debounce ms between each request.
-                 *
-                 * @attribute debounce
-                 * @type number
-                 * @default 0
-                 */
-                debounce: {reflect: true, value: 0},
-
-                /**
-                 * The request error message.
-                 *
-                 * @attribute error
-                 * @type string
-                 * @default ""
-                 */
-                error: {reflect: true, value: ''},
-
-                /**
-                 * An object containing request headers.
-                 *
-                 * @attribute headers
-                 * @type Object
-                 */
-                headers: {reflect: false, value: null},
-
-                /**
-                 * How often to send TCP KeepAlive packets over sockets being kept alive.
-                 *
-                 * @attribute keepAlive
-                 * @type number
-                 * @default 0
-                 */
-                keepAlive: {reflect: true, value: 0},
-
-                /**
-                 * A string specifying the HTTP request method.
-                 *
-                 * @attribute method
-                 * @type string
-                 * @default "GET"
-                 */
-                method: {reflect: true, value: 'GET'},
-
-                /**
-                 * The request received response.
-                 *
-                 * @attribute response
-                 * @type Object
-                 * @readonly
-                 */
-                response: {reflect: false, value: null},
-
-                /**
-                 * The request state.
-                 *
-                 * @attribute state
-                 * @type string
-                 * @default "idle"
-                 * @readonly
-                 */
-                state: {reflect: true, value: 'idle'},
-
-                /**
-                 * The request url.
-                 *
-                 * @attribute url
-                 * @type string
-                 * @default ""
-                 */
-                url: {reflect: true, value: ''}
-            },
+        // PROPERTIES
+        properties: {
 
             /**
              * The adapted object.
              *
-             * @property adaptee
+             * @attribute adaptee
              * @type Object
-             * @private
+             * @notifies
+             * @readonly
              */
-            adaptee: null,
+            adaptee: {
+                notify: true,
+                readOnly: true,
+                type: Object,
+                value: null
+            },
 
             /**
-             * The debounced send job.
+             * If set to true, the request is automatically sent.
              *
-             * @property jobSend
-             * @type Function
-             * @private
+             * @attribute auto
+             * @type boolean
+             * @default false
              */
-            jobSend: null,
+            auto: {
+                reflectToAttribute: true,
+                type: Boolean,
+                value: false
+            },
+
+            /**
+             * The request received data.
+             *
+             * @attribute data
+             * @type Buffer | string
+             * @notifies
+             * @readonly
+             */
+            data: {
+                notify: true,
+                readOnly: true,
+                value: null
+            },
+
+            /**
+             * The type of data expected back from the server.
+             *
+             * @attribute dataType
+             * @type "json" | "text"
+             * @default "text"
+             */
+            dataType: {
+                reflectToAttribute: true,
+                type: String,
+                value: 'text'
+            },
+
+            /**
+             * The debounce ms between each request.
+             *
+             * @attribute debounce
+             * @type number
+             */
+            debounce: {
+                reflectToAttribute: true,
+                type: Number,
+                value: null
+            },
+
+            /**
+             * The request error message.
+             *
+             * @attribute error
+             * @type string
+             * @notifies
+             * @readonly
+             */
+            error: {
+                notify: true,
+                readOnly: true,
+                value: null
+            },
+
+            /**
+             * An object containing request headers.
+             *
+             * @attribute headers
+             * @type Object
+             */
+            headers: {
+                type: Object,
+                value: null
+            },
+
+            /**
+             * How often to send TCP KeepAlive packets over sockets being kept alive.
+             *
+             * @attribute keepAlive
+             * @type number
+             * @default 0
+             */
+            keepAlive: {
+                reflectToAttribute: true,
+                type: Number,
+                value: 0
+            },
+
+            /**
+             * A string specifying the HTTP request method.
+             *
+             * @attribute method
+             * @type string
+             * @default "GET"
+             */
+            method: {
+                reflectToAttribute: true,
+                type: String,
+                value: 'GET'
+            },
 
             /**
              * The responded adaptee.
              *
-             * @property responded
+             * @attribute responded
              * @type Object
-             * @private
+             * @notifies
+             * @readonly
              */
-            responded: null,
-
-            /*********************************************************************/
-
-            // LISTENER
-            ready: function () {
-                this.refresh();
+            responded: {
+                notify: true,
+                readOnly: true,
+                type: Object,
+                value: null
             },
 
-            /*********************************************************************/
-
-            // HANDLER
-            handleChunk: function (chunk, adaptee) {
-                var self = this;
-                if (!self.isCurrent(adaptee)) { return; }
-                self.data  = null;
-                self.error = '';
-                self.fire('xp-request-chunk', {firer: self, chunk: chunk});
+            /**
+             * The request received response.
+             *
+             * @attribute response
+             * @type Object
+             * @notifies
+             * @readonly
+             */
+            response: {
+                notify: true,
+                readOnly: true,
+                type: Object,
+                value: null
             },
 
-            // HANDLER
-            handleData: function (data, adaptee) {
-                var self = this;
-                if (self.isExpired(adaptee)) { return; }
-                self.data  = data;
-                self.error = '';
-                self.fire('xp-request-data', {firer: self, data: data});
+            /**
+             * The request state.
+             *
+             * @attribute state
+             * @type string
+             * @default "idle"
+             * @notifies
+             * @readonly
+             */
+            state: {
+                notify: true,
+                readOnly: true,
+                reflectToAttribute: true,
+                type: String,
+                value: 'idle'
             },
 
-            // HANDLER
-            handleError: function (error, adaptee) {
-                var self = this;
-                if (self.isExpired(adaptee)) { return; }
-                self.data  = null;
-                self.error = error;
-                self.fire('xp-request-error', {firer: self, error: error});
-            },
-
-            // HANDLER
-            handleResponse: function (response, adaptee) {
-                var self = this;
-                if (self.isExpired(adaptee)) { return; }
-                self.responded = adaptee;
-                self.response  = response;
-                self.fire('xp-request-response', {firer: self});
-            },
-
-            // HANDLER
-            handleState: function (state, adaptee) {
-                var self = this;
-                if (!self.isCurrent(adaptee)) { return; }
-                self.state = state;
-                self.fire('xp-request-state', {firer: self, state: state});
+            /**
+             * The request url.
+             *
+             * @attribute url
+             * @type string
+             */
+            url: {
+                reflectToAttribute: true,
+                type: String,
+                value: null
             }
-        });
-    </script>
+        },
 
-</polymer-element>
+        /*********************************************************************/
+
+        // LISTENER
+        created: function () {
+
+            // Vars
+            var self = this;
+
+            // Binding
+            self._handleChunkBound    = self._handleChunk.bind(self);
+            self._handleDataBound     = self._handleData.bind(self);
+            self._handleErrorBound    = self._handleError.bind(self);
+            self._handleResponseBound = self._handleResponse.bind(self);
+            self._handleStateBound    = self._handleState.bind(self);
+
+            // Debouncing
+            self._jobSend = XP.debounce(function () { if (self.auto) { self.send(); } });
+        },
+
+        /*********************************************************************/
+
+        // HANDLER
+        _handleChunk: function (chunk, adaptee) {
+
+            // Vars
+            var self = this;
+
+            // Checking
+            if (!self._isCurrent(adaptee)) { return; }
+
+            // Setting
+            self._setData(null);
+            self._setError(null);
+
+            // Firing
+            self.fire('xp-request-chunk', {firer: self, chunk: chunk});
+        },
+
+        // HANDLER
+        _handleData: function (data, adaptee) {
+
+            // Vars
+            var self = this;
+
+            // Checking
+            if (self._isExpired(adaptee)) { return; }
+
+            // Setting
+            self._setData(data);
+            self._setError(null);
+
+            // Firing
+            self.fire('xp-request-data', {firer: self, data: data});
+        },
+
+        // HANDLER
+        _handleError: function (error, adaptee) {
+
+            // Vars
+            var self = this;
+
+            // Checking
+            if (self._isExpired(adaptee)) { return; }
+
+            // Setting
+            self._setData(null);
+            self._setError(error);
+
+            // Firing
+            self.fire('xp-request-error', {firer: self, error: error});
+        },
+
+        // HANDLER
+        _handleResponse: function (response, adaptee) {
+
+            // Vars
+            var self = this;
+
+            // Checking
+            if (self._isExpired(adaptee)) { return; }
+
+            // Setting
+            self._setResponded(adaptee);
+            self._setResponse(response);
+
+            // Firing
+            self.fire('xp-request-response', {firer: self});
+        },
+
+        // HANDLER
+        _handleState: function (state, adaptee) {
+
+            // Vars
+            var self = this;
+
+            // Checking
+            if (!self._isCurrent(adaptee)) { return; }
+
+            // Setting
+            self._setState(state);
+
+            // Firing
+            self.fire('xp-request-state', {firer: self, state: state});
+        }
+    });
+</script>
