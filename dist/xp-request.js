@@ -6980,6 +6980,8 @@ module.exports = require('./lib');
             headers: null,
             keepAlive: 0,
             method: 'GET',
+            path: '',
+            port: null,
             url: ''
         },
 
@@ -7032,9 +7034,11 @@ module.exports = require('./lib');
          * @param {Object | string} opt The request url or options.
          *   @param {string} [opt.dataType = "text"] The type of data expected back from the server.
          *   @param {Object} [opt.headers] An object containing request headers.
-         *   @param {number} [opt.keepAlive = 0] How often to send TCP KeepAlive packets over sockets being kept alive.
+         *   @param {number} [opt.keepAlive = 0] How often to submit TCP KeepAlive packets over sockets being kept alive.
          *   @param {string} [opt.method = "GET"] A string specifying the HTTP request method.
-         *   @param {string} opt.url The request url.
+         *   @param {string} [opt.path] The request path, useful for relative requests.
+         *   @param {number} [opt.port] The request port, useful for relative requests.
+         *   @param {string} [opt.url] The request url.
          */
         initialize: {
             promise: true,
@@ -7044,7 +7048,8 @@ module.exports = require('./lib');
                 XP.assertArgument(XP.isObject(opt) || XP.isString(opt, true), 1, 'Object or string');
 
                 // Vars
-                var self = this;
+                var self     = this,
+                    location = global.location || {};
 
                 // Super
                 XPEmitter.call(self);
@@ -7057,6 +7062,9 @@ module.exports = require('./lib');
                 self.keepAlive = self.options.keepAlive;
                 self.method    = self.options.method;
                 self.url       = self.options.url;
+                self.path      = self.options.path;
+                self.port      = self.options.port;
+                self.secure    = self.parsed.protocol || location.protocol === 'https:';
                 self.resolver  = resolver;
                 self.state     = 'idle';
 
@@ -7096,29 +7104,32 @@ module.exports = require('./lib');
         },
 
         /**
-         * Sends the request, appending data to the request body.
+         * Submits the request, using data for the request body.
          *
-         * @method send
-         * @param {Buffer | string} [data]
+         * @method submit
+         * @param {Buffer | Object | string} [data]
          * @returns {Object}
          */
-        send: function (data) {
+        submit: function (data) {
 
             // Asserting
-            XP.assertArgument(XP.isVoid(data) || Buffer.isBuffer(data) || XP.isString(data, true), 1, 'Buffer or string');
+            XP.assertArgument(XP.isVoid(data) || XP.isObject(data) || XP.isString(data, true), 1, 'Buffer, Object or string');
 
             // Vars
             var self = this;
 
             // Checking
-            if (self.timeSend) { return self; }
+            if (self.timeSubmit) { return self; }
+
+            // Serializing
+            if (self.method !== 'GET' && !XP.isString(data) && !Buffer.isBuffer(data)) { data = JSON.stringify(data); }
 
             // Ending
-            self.adaptee.end(data);
+            self.adaptee.end(self.method !== 'GET' ? data : undefined);
 
             // Setting
-            self.state    = 'pending';
-            self.timeSend = Date.now();
+            self.state      = 'pending';
+            self.timeSubmit = Date.now();
 
             return self;
         },
@@ -7137,21 +7148,21 @@ module.exports = require('./lib');
             value: function () {
 
                 // Vars
-                var parsed   = XP.parseURL(this.url),
-                    self     = XP.assign(this, {secure: (parsed.protocol || global.location.protocol) === 'https:'}),
+                var self     = this,
+                    location = global.location || {},
                     port     = self.secure ? 443 : 80,
                     protocol = self.secure ? https : http;
 
                 // Adapting
                 self.adaptee = protocol.request({
-                    auth: parsed.auth,
+                    auth: self.parsed.auth,
                     headers: self.headers,
-                    hostname: parsed.hostname || global.location.hostname,
+                    hostname: self.parsed.hostname || location.hostname,
                     keepAlive: self.keepAlive > 0,
                     keepAliveMsecs: Math.max(self.keepAlive, 0),
                     method: self.method,
-                    path: parsed.path + (parsed.hash || ''),
-                    port: parsed.port || (parsed.hostname && port) || global.location.port
+                    path: self.path || self.parsed.path + (self.parsed.hash || ''),
+                    port: self.port || self.parsed.port || (self.parsed.hostname && port) || location.port
                 });
 
                 return self;
@@ -7265,6 +7276,7 @@ module.exports = require('./lib');
 
         /**
          * TODO DOC
+         *
          * @property method
          * @type string
          * @default "GET"
@@ -7272,6 +7284,39 @@ module.exports = require('./lib');
         method: {
             set: function (val) { return this.method || XP.upperCase(val); },
             validate: function (val) { return XP.isString(val, true); }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property parsed
+         * @type Object
+         */
+        parsed: {
+            set: function (val) { return this.parsed || val; },
+            validate: function (val) { return XP.isObject(val); }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property path
+         * @type string
+         */
+        path: {
+            set: function (val) { return XP.isDefined(this.path) ? this.path : (!this.url && val) || ''; },
+            validate: function (val) { return XP.isString(val); }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property port
+         * @type number
+         */
+        port: {
+            set: function (val) { return XP.isDefined(this.port) ? this.port : (!this.url && val) || null; },
+            validate: function (val) { return XP.isVoid(val) || XP.isFinite(val, true); }
         },
 
         /**
@@ -7293,7 +7338,7 @@ module.exports = require('./lib');
          * @readonly
          */
         secure: {
-            set: function (val) { return XP.isBoolean(this.secure) ? this.secure : !!val; }
+            set: function (val) { return XP.isDefined(this.secure) ? this.secure : !!val; }
         },
 
         /**
@@ -7361,12 +7406,12 @@ module.exports = require('./lib');
         /**
          * TODO DOC
          *
-         * @property timeSend
+         * @property timeSubmit
          * @type number
          * @readonly
          */
-        timeSend: {
-            set: function (val) { return this.timeSend || val; },
+        timeSubmit: {
+            set: function (val) { return this.timeSubmit || val; },
             validate: function (val) { return XP.isFinite(val, true); }
         },
 
@@ -7377,8 +7422,9 @@ module.exports = require('./lib');
          * @type string
          */
         url: {
-            set: function (val) { return this.url || val; },
-            validate: function (val) { return XP.isString(val, true); }
+            set: function (val) { return XP.isDefined(this.url) ? this.url : val || ''; },
+            then: function (post) { this.parsed = XP.parseURL(post) || {}; },
+            validate: function (val) { return XP.isString(val); }
         },
 
         /*********************************************************************/

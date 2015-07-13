@@ -15,14 +15,18 @@ This element is used to perform XHR requests.
 @group functionality
 @homepage http://expandjs.com/elements/xp-request
 
+@behavior xp-adapter-behavior http://expandjs.com/elements/xp-adapter-behavior
+
 @dependency polymer Polymer/polymer#^1.0.0
-@dependency expandjs ExpandJS/expandjs#0.9.3
-@dependency xp-emitter ExpandJS/xp-emitter#0.9.3
+@dependency expandjs ExpandJS/expandjs#0.9.4
+@dependency xp-adapter-behavior ExpandJS/xp-adapter-behavior#0.9.4
+@dependency xp-emitter ExpandJS/xp-emitter#0.9.4
 -->
 
 <link rel="import" href="../polymer/polymer.html">
 <link rel="import" href="../expandjs/expandjs.html">
 <link rel="import" href="../xp-emitter/xp-emitter.html">
+<link rel="import" href="../xp-adapter-behavior/xp-adapter-behavior.html">
 <script src="dist/xp-request.min.js"></script>
 
 <script>
@@ -30,6 +34,11 @@ This element is used to perform XHR requests.
 
         // ELEMENT
         is: 'xp-request',
+
+        // BEHAVIORS
+        behaviors: [
+            Polymer.XPAdapterBehavior
+        ],
 
         /*********************************************************************/
 
@@ -78,6 +87,16 @@ This element is used to perform XHR requests.
          * @bubbles
          */
 
+        /**
+         * Fired when the request is about to be submitted.
+         *
+         * @event xp-request-submit
+         * @param {Element} firer
+         * @param {Buffer | string} data
+         * @bubbles
+         * @cancelable
+         */
+
         /*********************************************************************/
 
         /**
@@ -87,58 +106,81 @@ This element is used to perform XHR requests.
          * @returns {Element}
          */
         abort: function () {
+
+            // Vars
             var self = this;
+
+            // Aborting
             if (self.adaptee) { self.adaptee.abort(); }
+
             return self;
         },
 
         /**
-         * Sends the request, appending data to the request body.
+         * Submits the request, using data for the query string or the request body.
          *
-         * @method send
-         * @param {Buffer | string} [data]
+         * @method submit
+         * @param {Buffer | Object | string} [data]
          * @returns {Element}
          */
-        send: function (data) {
-            var self = this._adapt();
-            if (self.adaptee) { self.adaptee.send(data); }
+        submit: function (data) {
+
+            // Vars
+            var self = this;
+
+            // Adapting
+            if (!self._adapt(data)) { return self; }
+
+            // Firing
+            if (self.fire('xp-request-submit', {firer: self, data: data}, {cancelable: true}).defaultPrevented) { return self; }
+
+            // Submitting
+            self.adaptee.submit(data);
+
             return self;
         },
 
         /*********************************************************************/
 
         /**
-         * Creates the adaptee.
+         * Used to set the adaptee.
          *
          * @method _adapt
+         * @param {Buffer | Object | string} [data]
          * @returns {Element}
          * @private
          */
-        _adapt: function () {
+        _adapt: function (data) {
+
+            // Asserting
+            XP.assertArgument(XP.isVoid(data) || XP.isObject(data) || XP.isString(data), 1, 'Buffer, Object or string');
 
             // Vars
-            var self = this;
-
-            // Checking
-            if (!self.url) { return self; }
+            var self      = this,
+                adaptable = self.path || self.port || self.url,
+                query     = adaptable && XP.upperCase(self.method) === 'GET' && (XP.isString(data) ? data : XP.toQueryString(data));
 
             // Adapting
-            self._setAdaptee(new XPRequest({
+            self._setAdaptee(adaptable ? new XPRequest({
                 dataType: self.dataType,
-                headers: self.headers,
+                headers: XP.assign({}, self.headers, {'Content-Type': self.enctype}),
                 keepAlive: self.keepAlive,
                 method: self.method,
-                url: self.url
-            }));
+                path: self.path + (query ? '?' + query : ''),
+                port: self.port,
+                url: self.url + (query ? '?' + query : '')
+            }) : null);
 
             // Listening
-            self.adaptee.on('chunk', self._handleChunkBound);
-            self.adaptee.on('data', self._handleDataBound);
-            self.adaptee.on('error', self._handleErrorBound);
-            self.adaptee.on('response', self._handleResponseBound);
-            self.adaptee.on('state', self._handleStateBound);
+            if (self.adaptee) {
+                self.adaptee.on('chunk', self._handleChunkBound);
+                self.adaptee.on('data', self._handleDataBound);
+                self.adaptee.on('error', self._handleErrorBound);
+                self.adaptee.on('response', self._handleResponseBound);
+                self.adaptee.on('state', self._handleStateBound);
+            }
 
-            return self;
+            return self.adaptee;
         },
 
         /**
@@ -151,7 +193,7 @@ This element is used to perform XHR requests.
          */
         _isExpired: function (adaptee) {
             XP.assertArgument(XP.isObject(adaptee), 1, 'Object');
-            return this.responded ? adaptee.timeSend < this.responded.timeSend : false;
+            return this.responded ? adaptee.timeSubmit < this.responded.timeSubmit : false;
         },
 
         /**
@@ -176,7 +218,7 @@ This element is used to perform XHR requests.
          */
         _refresh: function () {
             var self = this;
-            self._jobSend = XP.debounce(function () { if (self.auto) { self.send(); } }, self.debounce || 0);
+            self._jobSubmit = XP.debounce(function () { if (self.auto) { self.submit(); } }, self.debounce || 0);
             return self;
         },
 
@@ -184,27 +226,12 @@ This element is used to perform XHR requests.
 
         // OBSERVERS
         observers: [
-            '_jobSend(dataType, headers, keepAlive, method, url)',
+            '_jobSubmit(dataType, enctype, headers, keepAlive, method, path, port, url)',
             '_refresh(debounce)'
         ],
 
         // PROPERTIES
         properties: {
-
-            /**
-             * The adapted object.
-             *
-             * @attribute adaptee
-             * @type Object
-             * @notifies
-             * @readonly
-             */
-            adaptee: {
-                notify: true,
-                readOnly: true,
-                type: Object,
-                value: null
-            },
 
             /**
              * If set to true, the request is automatically sent.
@@ -259,6 +286,18 @@ This element is used to perform XHR requests.
             },
 
             /**
+             * The encoding type used on request.
+             *
+             * @attribute enctype
+             * @type String
+             */
+            enctype: {
+                reflectToAttribute: true,
+                type: String,
+                value: null
+            },
+
+            /**
              * The request error message.
              *
              * @attribute error
@@ -269,6 +308,7 @@ This element is used to perform XHR requests.
             error: {
                 notify: true,
                 readOnly: true,
+                type: String,
                 value: null
             },
 
@@ -280,11 +320,11 @@ This element is used to perform XHR requests.
              */
             headers: {
                 type: Object,
-                value: null
+                value: function () { return {}; }
             },
 
             /**
-             * How often to send TCP KeepAlive packets over sockets being kept alive.
+             * How often to submit TCP KeepAlive packets over sockets being kept alive.
              *
              * @attribute keep-alive
              * @type number
@@ -307,6 +347,30 @@ This element is used to perform XHR requests.
                 reflectToAttribute: true,
                 type: String,
                 value: 'GET'
+            },
+
+            /**
+             * The request path, useful for relative requests.
+             *
+             * @attribute path
+             * @type string
+             */
+            path: {
+                reflectToAttribute: true,
+                type: String,
+                value: null
+            },
+
+            /**
+             * The request port, useful for relative requests.
+             *
+             * @attribute port
+             * @type number
+             */
+            port: {
+                reflectToAttribute: true,
+                type: Number,
+                value: null
             },
 
             /**
@@ -385,7 +449,7 @@ This element is used to perform XHR requests.
             self._handleStateBound    = self._handleState.bind(self);
 
             // Debouncing
-            self._jobSend = XP.debounce(function () { if (self.auto) { self.send(); } });
+            self._jobSubmit = XP.debounce(function () { if (self.auto) { self.submit(); } });
         },
 
         /*********************************************************************/

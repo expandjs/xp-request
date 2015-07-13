@@ -1,7 +1,7 @@
 {
   "name": "xp-request",
   "license": "BSD-3-Clause",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "This element is used to perform XHR requests",
   "homepage": "http://expandjs.com/elements/xp-request",
   "authors": [
@@ -23,8 +23,9 @@
     "**/.*"
   ],
   "dependencies": {
-    "expandjs": "ExpandJS/expandjs#0.9.3",
-    "xp-emitter": "ExpandJS/xp-emitter#0.9.3",
+    "expandjs": "ExpandJS/expandjs#0.9.4",
+    "xp-adapter-behavior": "ExpandJS/xp-adapter-behavior#0.9.4",
+    "xp-emitter": "ExpandJS/xp-emitter#0.9.4",
     "polymer": "Polymer/polymer#^1.0.0"
   }
 }
