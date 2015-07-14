@@ -7064,7 +7064,7 @@ module.exports = require('./lib');
                 self.url       = self.options.url;
                 self.path      = self.options.path;
                 self.port      = self.options.port;
-                self.secure    = self.parsed.protocol || location.protocol === 'https:';
+                self.secure    = (self.parsed.protocol || location.protocol) === 'https:';
                 self.resolver  = resolver;
                 self.state     = 'idle';
 
@@ -7162,7 +7162,8 @@ module.exports = require('./lib');
                     keepAliveMsecs: Math.max(self.keepAlive, 0),
                     method: self.method,
                     path: self.path || self.parsed.path + (self.parsed.hash || ''),
-                    port: self.port || self.parsed.port || (self.parsed.hostname && port) || location.port
+                    port: self.port || self.parsed.port || (self.parsed.hostname && port) || location.port,
+                    withCredentials: false
                 });
 
                 return self;
