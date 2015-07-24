@@ -15,12 +15,12 @@ This element is used to perform XHR requests.
 @group functionality
 @homepage http://expandjs.com/elements/xp-request
 
-@behavior xp-adapter-behavior http://expandjs.com/elements/xp-adapter-behavior
+@behavior xp-adapter-behavior /bower_components/xp-adapter-behavior/xp-adapter-behavior.html
 
 @dependency polymer Polymer/polymer#^1.0.0
-@dependency expandjs ExpandJS/expandjs#0.9.4
-@dependency xp-adapter-behavior ExpandJS/xp-adapter-behavior#0.9.4
-@dependency xp-emitter ExpandJS/xp-emitter#0.9.4
+@dependency expandjs ExpandJS/expandjs#0.9.5
+@dependency xp-adapter-behavior ExpandJS/xp-adapter-behavior#0.9.5
+@dependency xp-emitter ExpandJS/xp-emitter#0.9.5
 -->
 
 <link rel="import" href="../polymer/polymer.html">
@@ -163,7 +163,7 @@ This element is used to perform XHR requests.
             // Adapting
             self._setAdaptee(adaptable ? new XPRequest({
                 dataType: self.dataType,
-                headers: XP.assign({}, self.headers, {'Content-Type': self.enctype}),
+                headers: XP.assign({}, self.headers, self.enctype && {'Content-Type': self.enctype}),
                 keepAlive: self.keepAlive,
                 method: self.method,
                 path: self.path + (query ? '?' + query : ''),
@@ -217,8 +217,20 @@ This element is used to perform XHR requests.
          * @private
          */
         _refresh: function () {
+
+            // Vars
             var self = this;
-            self._jobSubmit = XP.debounce(function () { if (self.auto) { self.submit(); } }, self.debounce || 0);
+
+            // Checking
+            if (!self.auto) { return self; }
+
+            // Setting
+            self._setData(null);
+            self._setError(null);
+
+            // Submitting
+            self._jobSubmit();
+
             return self;
         },
 
@@ -226,8 +238,7 @@ This element is used to perform XHR requests.
 
         // OBSERVERS
         observers: [
-            '_jobSubmit(dataType, enctype, headers, keepAlive, method, path, port, url)',
-            '_refresh(debounce)'
+            '_refresh(dataType, enctype, headers, method, path, port, url)'
         ],
 
         // PROPERTIES
@@ -280,9 +291,25 @@ This element is used to perform XHR requests.
              * @type number
              */
             debounce: {
+                observer: '_debounceChanged',
                 reflectToAttribute: true,
                 type: Number,
                 value: null
+            },
+
+            /**
+             * If set to true, the data are not ready yet.
+             *
+             * @attribute empty-data
+             * @type boolean
+             * @notifies
+             * @readonly
+             */
+            emptyData: {
+                computed: '_computeEmptyData(data)',
+                notify: true,
+                reflectToAttribute: true,
+                type: Boolean
             },
 
             /**
@@ -434,6 +461,20 @@ This element is used to perform XHR requests.
 
         /*********************************************************************/
 
+        // COMPUTER
+        _computeEmptyData: function (data) {
+            return !data;
+        },
+
+        /*********************************************************************/
+
+        // OBSERVER
+        _debounceChanged: function (post) {
+            this._jobSubmit = XP.debounce(this.submit.bind(this), post || 0);
+        },
+
+        /*********************************************************************/
+
         // LISTENER
         created: function () {
 
@@ -446,9 +487,6 @@ This element is used to perform XHR requests.
             self._handleErrorBound    = self._handleError.bind(self);
             self._handleResponseBound = self._handleResponse.bind(self);
             self._handleStateBound    = self._handleState.bind(self);
-
-            // Debouncing
-            self._jobSubmit = XP.debounce(function () { if (self.auto) { self.submit(); } });
         },
 
         /*********************************************************************/
