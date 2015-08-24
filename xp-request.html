@@ -164,7 +164,7 @@ This element is used to perform XHR requests.
             // Adapting
             self._setAdaptee(adaptable ? new XPRequest({
                 dataType: self.dataType,
-                headers: XP.assign({}, self.headers, self.enctype && {'Content-Type': self.enctype}),
+                headers: XP.assign({}, self.headers, self.contentType && {'Content-Type': self.contentType}),
                 keepAlive: self.keepAlive,
                 method: self.method,
                 path: self.path + (query ? '?' + query : ''),
@@ -239,7 +239,7 @@ This element is used to perform XHR requests.
 
         // OBSERVERS
         observers: [
-            '_refresh(dataType, enctype, headers, method, path, port, url)'
+            '_refresh(contentType, dataType, headers, method, path, port, url)'
         ],
 
         // PROPERTIES
@@ -256,6 +256,18 @@ This element is used to perform XHR requests.
                 reflectToAttribute: true,
                 type: Boolean,
                 value: false
+            },
+
+            /**
+             * The encoding type used on request.
+             *
+             * @attribute content-type
+             * @type String
+             */
+            contentType: {
+                reflectToAttribute: true,
+                type: String,
+                value: null
             },
 
             /**
@@ -311,18 +323,6 @@ This element is used to perform XHR requests.
                 notify: true,
                 reflectToAttribute: true,
                 type: Boolean
-            },
-
-            /**
-             * The encoding type used on request.
-             *
-             * @attribute enctype
-             * @type String
-             */
-            enctype: {
-                reflectToAttribute: true,
-                type: String,
-                value: null
             },
 
             /**
