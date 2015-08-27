@@ -6925,7 +6925,8 @@ module.exports = require('./lib');
                 XP.assertArgument(XP.isObject(opt) || XP.isString(opt, true), 1, 'Object or string');
 
                 // Vars
-                var self = this;
+                var self     = this,
+                    location = global.location || {};
 
                 // Super
                 XPEmitter.call(self);
@@ -7040,6 +7041,7 @@ module.exports = require('./lib');
                     keepAliveMsecs: Math.max(self.keepAlive, 0),
                     method: self.method,
                     path: self.path || self.parsed.path + (self.parsed.hash || ''),
+                    protocol: self.secure ? 'https:' : 'http:',
                     port: self.port || self.parsed.port || (self.parsed.hostname && port) || location.port,
                     withCredentials: false
                 });
