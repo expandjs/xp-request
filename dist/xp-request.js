@@ -6850,7 +6850,9 @@ module.exports = require('./lib');
 
         // OPTIONS
         options: {
-            dataType: 'text',
+            contentType: null,
+            dataType: null,
+            encoding: null,
             headers: null,
             keepAlive: 0,
             method: 'GET',
@@ -6906,7 +6908,8 @@ module.exports = require('./lib');
         /**
          * @constructs
          * @param {Object | string} opt The request url or options.
-         *   @param {string} [opt.dataType = "text"] The type of data expected back from the server.
+         *   @param {string} [opt.contentType] A shortcut for the "Content-Type" header.
+         *   @param {string} [opt.dataType] The type of data expected back from the server.
          *   @param {Object} [opt.headers] An object containing request headers.
          *   @param {number} [opt.keepAlive = 0] How often to submit TCP KeepAlive packets over sockets being kept alive.
          *   @param {string} [opt.method = "GET"] A string specifying the HTTP request method.
@@ -6928,18 +6931,20 @@ module.exports = require('./lib');
                 XPEmitter.call(self);
 
                 // Setting
-                self.options   = XP.isString(opt) ? {} : opt;
-                self.dataType  = self.options.dataType;
-                self.headers   = self.options.headers || {};
-                self.keepAlive = self.options.keepAlive;
-                self.method    = self.options.method;
-                self.url       = self.options.url;
-                self.path      = self.options.path;
-                self.port      = self.options.port;
-                self.secure    = (self.parsed.protocol || (global.location && global.location.protocol)) === 'https:';
-                self.resolver  = resolver;
-                self.state     = 'idle';
-                self._chunks   = [];
+                self.options     = XP.isString(opt) ? {} : opt;
+                self.contentType = self.options.contentType;
+                self.dataType    = self.options.dataType;
+                self.encoding    = self.options.encoding;
+                self.headers     = self.options.headers || {};
+                self.keepAlive   = self.options.keepAlive;
+                self.method      = self.options.method;
+                self.url         = self.options.url;
+                self.path        = self.options.path;
+                self.port        = self.options.port;
+                self.secure      = (self.parsed.protocol || (global.location && global.location.protocol)) === 'https:';
+                self.resolver    = resolver;
+                self.state       = 'idle';
+                self._chunks     = [];
 
                 // Adapting
                 self._adapt();
@@ -6964,14 +6969,14 @@ module.exports = require('./lib');
             var self = this;
 
             // Checking
-            if (self.timeAbort) { return self; }
+            if (self.tsAbort) { return self; }
 
             // Aborting
             self._adaptee.abort();
 
             // Setting
-            self.state     = 'aborted';
-            self.timeAbort = Date.now();
+            self.state   = 'aborted';
+            self.tsAbort = Date.now();
 
             return self;
         },
@@ -6992,7 +6997,7 @@ module.exports = require('./lib');
             var self = this;
 
             // Checking
-            if (self.timeSubmit) { return self; }
+            if (self.tsSubmit) { return self; }
 
             // Serializing
             if (self.method !== 'GET' && !XP.isString(data) && !Buffer.isBuffer(data)) { data = JSON.stringify(data); }
@@ -7001,8 +7006,8 @@ module.exports = require('./lib');
             self._adaptee.end(self.method !== 'GET' ? data : undefined);
 
             // Setting
-            self.state      = 'pending';
-            self.timeSubmit = Date.now();
+            self.state    = 'pending';
+            self.tsSubmit = Date.now();
 
             return self;
         },
@@ -7065,6 +7070,17 @@ module.exports = require('./lib');
         /**
          * TODO DOC
          *
+         * @property contentType
+         * @type string
+         */
+        contentType: {
+            set: function (val) { return this.contentType || val || 'auto'; },
+            validate: function (val) { return XP.isString(val, true); }
+        },
+
+        /**
+         * TODO DOC
+         *
          * @property data
          * @type Buffer | string
          * @readonly
@@ -7078,11 +7094,10 @@ module.exports = require('./lib');
          *
          * @property dataType
          * @type string
-         * @default "text"
          */
         dataType: {
-            set: function (val) { return this.dataType || val; },
-            validate: function (val) { return XP.includes(this.dataTypes, val); }
+            set: function (val) { return this.dataType || val || 'auto'; },
+            validate: function (val) { return val === 'auto' || XP.includes(this.dataTypes, val); }
         },
 
         /**
@@ -7090,13 +7105,24 @@ module.exports = require('./lib');
          *
          * @property dataTypes
          * @type Array
-         * @default ["json", "text"]
+         * @default ["json"]
          * @readonly
          */
         dataTypes: {
             frozen: true,
             writable: false,
-            value: ['json', 'text']
+            value: ['json']
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property encoding
+         * @type string
+         */
+        encoding: {
+            set: function (val) { return XP.isDefined(this.encoding) ? this.encoding : val; },
+            validate: function (val) { return XP.isVoid(val) || XP.isString(val, true); }
         },
 
         /**
@@ -7106,7 +7132,8 @@ module.exports = require('./lib');
          * @type Object
          */
         headers: {
-            set: function (val) { return this.headers || val; },
+            set: function (val) { return this.headers || (XP.isObject(val) && XP.cloneDeep(val)); },
+            then: function (post) { if (post !== 'auto') { this.headers['Content-Type'] = post; } },
             validate: function (val) { return XP.isObject(val); }
         },
 
@@ -7118,7 +7145,7 @@ module.exports = require('./lib');
          * @default 0
          */
         keepAlive: {
-            set: function (val) { return this.keepAlive >= 0 ? this.keepAlive : val; },
+            set: function (val) { return this.keepAlive >= 0 ? this.keepAlive : val || 0; },
             validate: function (val) { return XP.isInt(val, true); }
         },
 
@@ -7130,7 +7157,7 @@ module.exports = require('./lib');
          * @default "GET"
          */
         method: {
-            set: function (val) { return this.method || XP.upperCase(val); },
+            set: function (val) { return this.method || XP.upperCase(val) || 'GET'; },
             validate: function (val) { return XP.isString(val, true); }
         },
 
@@ -7218,48 +7245,48 @@ module.exports = require('./lib');
         /**
          * TODO DOC
          *
-         * @property timeAbort
+         * @property tsAbort
          * @type number
          * @readonly
          */
-        timeAbort: {
-            set: function (val) { return this.timeAbort || val; },
+        tsAbort: {
+            set: function (val) { return this.tsAbort || val; },
             validate: function (val) { return XP.isFinite(val, true); }
         },
 
         /**
          * TODO DOC
          *
-         * @property timeData
+         * @property tsData
          * @type number
          * @readonly
          */
-        timeData: {
-            set: function (val) { return this.timeData || val; },
+        tsData: {
+            set: function (val) { return this.tsData || val; },
             validate: function (val) { return XP.isFinite(val, true); }
         },
 
         /**
          * TODO DOC
          *
-         * @property timeResponse
+         * @property tsResponse
          * @type number
          * @readonly
          */
-        timeResponse: {
-            set: function (val) { return this.timeResponse || val; },
+        tsResponse: {
+            set: function (val) { return this.tsResponse || val; },
             validate: function (val) { return XP.isFinite(val, true); }
         },
 
         /**
          * TODO DOC
          *
-         * @property timeSubmit
+         * @property tsSubmit
          * @type number
          * @readonly
          */
-        timeSubmit: {
-            set: function (val) { return this.timeSubmit || val; },
+        tsSubmit: {
+            set: function (val) { return this.tsSubmit || val; },
             validate: function (val) { return XP.isFinite(val, true); }
         },
 
@@ -7328,9 +7355,9 @@ module.exports = require('./lib');
             try {
 
                 // Setting
-                self.data     = self._parse(Buffer.isBuffer(self._chunks[0]) ? Buffer.concat(self._chunks) : self._chunks.join(''));
-                self.state    = 'received';
-                self.timeData = Date.now();
+                self.data   = self._parse(Buffer.isBuffer(self._chunks[0]) ? Buffer.concat(self._chunks) : self._chunks.join(''));
+                self.state  = 'received';
+                self.tsData = Date.now();
 
             } catch (exc) {
 
@@ -7352,9 +7379,9 @@ module.exports = require('./lib');
             var self = this;
 
             // Setting
-            self.state        = 'failed';
-            self.timeResponse = Date.now();
-            self.timeData     = self.timeResponse;
+            self.state      = 'failed';
+            self.tsResponse = Date.now();
+            self.tsData     = self.tsResponse;
 
             // Rejecting
             self.resolver(error);
@@ -7371,9 +7398,12 @@ module.exports = require('./lib');
             var self = this;
 
             // Setting
-            self.response     = response;
-            self.state        = 'receiving';
-            self.timeResponse = Date.now();
+            self.response   = response;
+            self.state      = 'receiving';
+            self.tsResponse = Date.now();
+
+            // Setting
+            if (self.encoding) { response.setEncoding(self.encoding); }
 
             // Listening
             response.on('data', self._handleData.bind(self));

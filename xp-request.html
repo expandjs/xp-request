@@ -163,8 +163,10 @@ This element is used to perform XHR requests.
 
             // Adapting
             self._setAdaptee(adaptable ? new XPRequest({
+                contentType: self.contentType,
                 dataType: self.dataType,
-                headers: XP.assign({}, self.headers, self.contentType && {'Content-Type': self.contentType}),
+                encoding: self.encoding,
+                headers: self.headers,
                 keepAlive: self.keepAlive,
                 method: self.method,
                 path: self.path + (query ? '?' + query : ''),
@@ -194,7 +196,7 @@ This element is used to perform XHR requests.
          */
         _isExpired: function (adaptee) {
             XP.assertArgument(XP.isObject(adaptee), 1, 'Object');
-            return this.responded ? adaptee.timeSubmit < this.responded.timeSubmit : false;
+            return this.responded ? adaptee.tsSubmit < this.responded.tsSubmit : false;
         },
 
         /**
@@ -259,7 +261,7 @@ This element is used to perform XHR requests.
             },
 
             /**
-             * The encoding type used on request.
+             * A shortcut for the "Content-Type" header.
              *
              * @attribute content-type
              * @type String
@@ -288,13 +290,12 @@ This element is used to perform XHR requests.
              * The type of data expected back from the server.
              *
              * @attribute data-type
-             * @type "json" | "text"
-             * @default "text"
+             * @type string
              */
             dataType: {
                 reflectToAttribute: true,
                 type: String,
-                value: 'text'
+                value: null
             },
 
             /**
@@ -323,6 +324,19 @@ This element is used to perform XHR requests.
                 notify: true,
                 reflectToAttribute: true,
                 type: Boolean
+            },
+
+            /**
+             * The response encoding.
+             *
+             * @attribute encoding
+             * @type string
+             * @default "utf-8"
+             */
+            encoding: {
+                reflectToAttribute: true,
+                type: String,
+                value: 'utf-8'
             },
 
             /**
