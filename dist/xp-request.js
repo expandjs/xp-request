@@ -7135,7 +7135,7 @@ module.exports = require('./lib');
          */
         headers: {
             set: function (val) { return this.headers || (XP.isObject(val) && XP.cloneDeep(val)); },
-            then: function (post) { if (post !== 'auto') { this.headers['Content-Type'] = post; } },
+            then: function () { if (this.contentType !== 'auto') { this.headers['Content-Type'] = this.contentType; } },
             validate: function (val) { return XP.isObject(val); }
         },
 
