@@ -6942,7 +6942,7 @@ module.exports = require('./lib');
                 self.url         = self.options.url;
                 self.path        = self.options.path;
                 self.port        = self.options.port;
-                self.secure      = (self.parsed.protocol || (global.location && global.location.protocol)) === 'https:';
+                self.secure      = (self.parsed.protocol || location.protocol) === 'https:';
                 self.resolver    = resolver;
                 self.state       = 'idle';
                 self._chunks     = [];
