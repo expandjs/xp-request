@@ -6848,19 +6848,6 @@ module.exports = require('./lib');
         // EXTENDS
         extends: XPEmitter,
 
-        // OPTIONS
-        options: {
-            contentType: null,
-            dataType: null,
-            encoding: null,
-            headers: null,
-            keepAlive: 0,
-            method: 'GET',
-            path: '',
-            port: null,
-            url: ''
-        },
-
         /*********************************************************************/
 
         /**
@@ -6907,22 +6894,22 @@ module.exports = require('./lib');
 
         /**
          * @constructs
-         * @param {Object | string} opt The request url or options.
-         *   @param {string} [opt.contentType] A shortcut for the "Content-Type" header.
-         *   @param {string} [opt.dataType] The type of data expected back from the server.
-         *   @param {Object} [opt.headers] An object containing request headers.
-         *   @param {number} [opt.keepAlive = 0] How often to submit TCP KeepAlive packets over sockets being kept alive.
-         *   @param {string} [opt.method = "GET"] A string specifying the HTTP request method.
-         *   @param {string} [opt.path] The request path, useful for relative requests.
-         *   @param {number} [opt.port] The request port, useful for relative requests.
-         *   @param {string} [opt.url] The request url.
+         * @param {Object | string} options The request url or options.
+         *   @param {string} [options.contentType = "auto"] A shortcut for the "Content-Type" header.
+         *   @param {string} [options.dataType = "auto"] The type of data expected back from the server.
+         *   @param {Object} [options.headers] An object containing request headers.
+         *   @param {number} [options.keepAlive = 0] How often to submit TCP KeepAlive packets over sockets being kept alive.
+         *   @param {string} [options.method = "GET"] A string specifying the HTTP request method.
+         *   @param {string} [options.path = ""] The request path, useful for relative requests.
+         *   @param {number} [options.port] The request port, useful for relative requests.
+         *   @param {string} [options.url = ""] The request url.
          */
         initialize: {
             promise: true,
-            value: function (opt, resolver) {
+            value: function (options, resolver) {
 
                 // Asserting
-                XP.assertArgument(XP.isObject(opt) || XP.isString(opt, true), 1, 'Object or string');
+                XP.assertArgument(XP.isObject(options) || XP.isString(options, true), 1, 'Object or string');
 
                 // Vars
                 var self     = this,
@@ -6932,16 +6919,16 @@ module.exports = require('./lib');
                 XPEmitter.call(self);
 
                 // Setting
-                self.options     = XP.isString(opt) ? {} : opt;
-                self.contentType = self.options.contentType;
-                self.dataType    = self.options.dataType;
-                self.encoding    = self.options.encoding;
+                self.options     = (XP.isString(options) && {}) || options;
+                self.contentType = self.options.contentType || 'auto';
+                self.dataType    = self.options.dataType || 'auto';
+                self.encoding    = self.options.encoding || null;
                 self.headers     = self.options.headers || {};
-                self.keepAlive   = self.options.keepAlive;
-                self.method      = self.options.method;
-                self.url         = self.options.url;
-                self.path        = self.options.path;
-                self.port        = self.options.port;
+                self.keepAlive   = self.options.keepAlive || 0;
+                self.method      = self.options.method || 'GET';
+                self.url         = self.options.url || '';
+                self.path        = self.options.path || '';
+                self.port        = self.options.port || null;
                 self.secure      = (self.parsed.protocol || location.protocol) === 'https:';
                 self.resolver    = resolver;
                 self.state       = 'idle';
@@ -7076,7 +7063,7 @@ module.exports = require('./lib');
          * @type string
          */
         contentType: {
-            set: function (val) { return this.contentType || val || 'auto'; },
+            set: function (val) { return this.contentType || val; },
             validate: function (val) { return XP.isString(val, true); }
         },
 
@@ -7098,7 +7085,7 @@ module.exports = require('./lib');
          * @type string
          */
         dataType: {
-            set: function (val) { return this.dataType || val || 'auto'; },
+            set: function (val) { return this.dataType || val; },
             validate: function (val) { return val === 'auto' || XP.includes(this.dataTypes, val); }
         },
 
@@ -7147,7 +7134,7 @@ module.exports = require('./lib');
          * @default 0
          */
         keepAlive: {
-            set: function (val) { return this.keepAlive >= 0 ? this.keepAlive : val || 0; },
+            set: function (val) { return this.keepAlive >= 0 ? this.keepAlive : val; },
             validate: function (val) { return XP.isInt(val, true); }
         },
 
@@ -7159,7 +7146,7 @@ module.exports = require('./lib');
          * @default "GET"
          */
         method: {
-            set: function (val) { return this.method || XP.upperCase(val) || 'GET'; },
+            set: function (val) { return this.method || XP.upperCase(val); },
             validate: function (val) { return XP.isString(val, true); }
         },
 
@@ -7299,7 +7286,7 @@ module.exports = require('./lib');
          * @type string
          */
         url: {
-            set: function (val) { return XP.isDefined(this.url) ? this.url : val || ''; },
+            set: function (val) { return XP.isDefined(this.url) ? this.url : val; },
             then: function (post) { this.parsed = XP.parseURL(post) || {}; },
             validate: function (val) { return XP.isString(val); }
         },
