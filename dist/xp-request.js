@@ -7027,11 +7027,13 @@ module.exports = _dereq_('./lib');
                 // Vars
                 var self     = this,
                     location = global.location || {},
+                    secure   = (self.protocol || (!self.hostname && location.protocol)) === 'https:',
                     port     = (self.port || (!self.hostname && location.port)) || null,
-                    protocol = (self.protocol || (!self.hostname && location.protocol)) === 'https:' ? https : http;
+                    protocol = secure ? 'https:' : 'http:',
+                    factory  = secure ? https : http;
 
                 // Adapting
-                self._adaptee = protocol.request({
+                self._adaptee = factory.request({
                     headers: self.headers,
                     hostname: self.hostname,
                     keepAlive: self.keepAlive > 0,
@@ -7039,6 +7041,7 @@ module.exports = _dereq_('./lib');
                     method: self.method,
                     path: self.path,
                     port: port,
+                    protocol: protocol,
                     withCredentials: false
                 });
 
