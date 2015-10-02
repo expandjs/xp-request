@@ -16,18 +16,14 @@ This element is used to perform XHR requests.
 @homepage http://expandjs.com/elements/xp-request
 @repository https://github.com/ExpandJS/xp-request
 
-@behavior xp-adapter-behavior /bower_components/xp-adapter-behavior/xp-adapter-behavior.html
-
 @dependency polymer Polymer/polymer#^1.1.0
 @dependency expandjs ExpandJS/expandjs#0.9.10
-@dependency xp-adapter-behavior ExpandJS/xp-adapter-behavior#0.9.10
 @dependency xp-emitter ExpandJS/xp-emitter#0.9.10
 -->
 
 <link rel="import" href="../polymer/polymer.html">
 <link rel="import" href="../expandjs/expandjs.html">
 <link rel="import" href="../xp-emitter/xp-emitter.html">
-<link rel="import" href="../xp-adapter-behavior/xp-adapter-behavior.html">
 
 <script src="dist/xp-request.min.js"></script>
 
@@ -36,11 +32,6 @@ This element is used to perform XHR requests.
 
         // ELEMENT
         is: 'xp-request',
-
-        // BEHAVIORS
-        behaviors: [
-            Polymer.XPAdapterBehavior
-        ],
 
         /*********************************************************************/
 
@@ -243,6 +234,21 @@ This element is used to perform XHR requests.
                 reflectToAttribute: true,
                 type: Boolean,
                 value: false
+            },
+
+            /**
+             * The adapted object.
+             *
+             * @attribute adaptee
+             * @type Object
+             * @notifies
+             * @readonly
+             */
+            adaptee: {
+                notify: true,
+                readOnly: true,
+                type: Object,
+                value: null
             },
 
             /**

@@ -7392,8 +7392,7 @@ module.exports = _dereq_('./lib');
                 failed   = self.statusCode >= 400,
                 data     = failed ? null : XP.join(self._chunks),
                 dataType = failed ? 'error' : self.dataType,
-                error    = failed ? XP.join(self._chunks).toString() : null,
-                event    = failed ? 'error' : 'data',
+                error    = failed ? XP.join(self._chunks).toString() || self.statusMessage : null,
                 state    = failed ? 'failed' : 'received';
 
             // Parsing
@@ -7409,7 +7408,7 @@ module.exports = _dereq_('./lib');
             self._resolver(self.error, self.data);
 
             // Emitting
-            self.emit(event, self[event], self);
+            self.emit(failed ? 'error' : 'data', failed ? self.error : self.data, self);
         },
 
         // HANDLER
@@ -7419,7 +7418,7 @@ module.exports = _dereq_('./lib');
             var self = this;
 
             // Setting
-            self.error = error.message;
+            self.error = error.message || 'Unknown';
             self.state = 'failed';
 
             // Resolving
