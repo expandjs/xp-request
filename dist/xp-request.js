@@ -3,12 +3,14 @@
 },{}],2:[function(_dereq_,module,exports){
 arguments[4][1][0].apply(exports,arguments)
 },{"dup":1}],3:[function(_dereq_,module,exports){
+(function (global){
 /*!
  * The buffer module from node.js, for the browser.
  *
  * @author   Feross Aboukhadijeh <feross@feross.org> <http://feross.org>
  * @license  MIT
  */
+/* eslint-disable no-proto */
 
 var base64 = _dereq_('base64-js')
 var ieee754 = _dereq_('ieee754')
@@ -48,7 +50,11 @@ var rootParent = {}
  * We detect these buggy browsers and set `Buffer.TYPED_ARRAY_SUPPORT` to `false` so they
  * get the Object implementation, which is slower but behaves correctly.
  */
-Buffer.TYPED_ARRAY_SUPPORT = (function () {
+Buffer.TYPED_ARRAY_SUPPORT = global.TYPED_ARRAY_SUPPORT !== undefined
+  ? global.TYPED_ARRAY_SUPPORT
+  : typedArraySupport()
+
+function typedArraySupport () {
   function Bar () {}
   try {
     var arr = new Uint8Array(1)
@@ -61,7 +67,7 @@ Buffer.TYPED_ARRAY_SUPPORT = (function () {
   } catch (e) {
     return false
   }
-})()
+}
 
 function kMaxLength () {
   return Buffer.TYPED_ARRAY_SUPPORT
@@ -217,10 +223,16 @@ function fromJsonObject (that, object) {
   return that
 }
 
+if (Buffer.TYPED_ARRAY_SUPPORT) {
+  Buffer.prototype.__proto__ = Uint8Array.prototype
+  Buffer.__proto__ = Uint8Array
+}
+
 function allocate (that, length) {
   if (Buffer.TYPED_ARRAY_SUPPORT) {
     // Return an augmented `Uint8Array` instance, for best performance
     that = Buffer._augment(new Uint8Array(length))
+    that.__proto__ = Buffer.prototype
   } else {
     // Fallback: Return an object instance of the Buffer class
     that.length = length
@@ -1009,7 +1021,7 @@ Buffer.prototype.writeUInt8 = function writeUInt8 (value, offset, noAssert) {
   offset = offset | 0
   if (!noAssert) checkInt(this, value, offset, 1, 0xff, 0)
   if (!Buffer.TYPED_ARRAY_SUPPORT) value = Math.floor(value)
-  this[offset] = value
+  this[offset] = (value & 0xff)
   return offset + 1
 }
 
@@ -1026,7 +1038,7 @@ Buffer.prototype.writeUInt16LE = function writeUInt16LE (value, offset, noAssert
   offset = offset | 0
   if (!noAssert) checkInt(this, value, offset, 2, 0xffff, 0)
   if (Buffer.TYPED_ARRAY_SUPPORT) {
-    this[offset] = value
+    this[offset] = (value & 0xff)
     this[offset + 1] = (value >>> 8)
   } else {
     objectWriteUInt16(this, value, offset, true)
@@ -1040,7 +1052,7 @@ Buffer.prototype.writeUInt16BE = function writeUInt16BE (value, offset, noAssert
   if (!noAssert) checkInt(this, value, offset, 2, 0xffff, 0)
   if (Buffer.TYPED_ARRAY_SUPPORT) {
     this[offset] = (value >>> 8)
-    this[offset + 1] = value
+    this[offset + 1] = (value & 0xff)
   } else {
     objectWriteUInt16(this, value, offset, false)
   }
@@ -1062,7 +1074,7 @@ Buffer.prototype.writeUInt32LE = function writeUInt32LE (value, offset, noAssert
     this[offset + 3] = (value >>> 24)
     this[offset + 2] = (value >>> 16)
     this[offset + 1] = (value >>> 8)
-    this[offset] = value
+    this[offset] = (value & 0xff)
   } else {
     objectWriteUInt32(this, value, offset, true)
   }
@@ -1077,7 +1089,7 @@ Buffer.prototype.writeUInt32BE = function writeUInt32BE (value, offset, noAssert
     this[offset] = (value >>> 24)
     this[offset + 1] = (value >>> 16)
     this[offset + 2] = (value >>> 8)
-    this[offset + 3] = value
+    this[offset + 3] = (value & 0xff)
   } else {
     objectWriteUInt32(this, value, offset, false)
   }
@@ -1130,7 +1142,7 @@ Buffer.prototype.writeInt8 = function writeInt8 (value, offset, noAssert) {
   if (!noAssert) checkInt(this, value, offset, 1, 0x7f, -0x80)
   if (!Buffer.TYPED_ARRAY_SUPPORT) value = Math.floor(value)
   if (value < 0) value = 0xff + value + 1
-  this[offset] = value
+  this[offset] = (value & 0xff)
   return offset + 1
 }
 
@@ -1139,7 +1151,7 @@ Buffer.prototype.writeInt16LE = function writeInt16LE (value, offset, noAssert) 
   offset = offset | 0
   if (!noAssert) checkInt(this, value, offset, 2, 0x7fff, -0x8000)
   if (Buffer.TYPED_ARRAY_SUPPORT) {
-    this[offset] = value
+    this[offset] = (value & 0xff)
     this[offset + 1] = (value >>> 8)
   } else {
     objectWriteUInt16(this, value, offset, true)
@@ -1153,7 +1165,7 @@ Buffer.prototype.writeInt16BE = function writeInt16BE (value, offset, noAssert) 
   if (!noAssert) checkInt(this, value, offset, 2, 0x7fff, -0x8000)
   if (Buffer.TYPED_ARRAY_SUPPORT) {
     this[offset] = (value >>> 8)
-    this[offset + 1] = value
+    this[offset + 1] = (value & 0xff)
   } else {
     objectWriteUInt16(this, value, offset, false)
   }
@@ -1165,7 +1177,7 @@ Buffer.prototype.writeInt32LE = function writeInt32LE (value, offset, noAssert) 
   offset = offset | 0
   if (!noAssert) checkInt(this, value, offset, 4, 0x7fffffff, -0x80000000)
   if (Buffer.TYPED_ARRAY_SUPPORT) {
-    this[offset] = value
+    this[offset] = (value & 0xff)
     this[offset + 1] = (value >>> 8)
     this[offset + 2] = (value >>> 16)
     this[offset + 3] = (value >>> 24)
@@ -1184,7 +1196,7 @@ Buffer.prototype.writeInt32BE = function writeInt32BE (value, offset, noAssert) 
     this[offset] = (value >>> 24)
     this[offset + 1] = (value >>> 16)
     this[offset + 2] = (value >>> 8)
-    this[offset + 3] = value
+    this[offset + 3] = (value & 0xff)
   } else {
     objectWriteUInt32(this, value, offset, false)
   }
@@ -1537,6 +1549,7 @@ function blitBuffer (src, dst, offset, length) {
   return i
 }
 
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{"base64-js":4,"ieee754":5,"is-array":6}],4:[function(_dereq_,module,exports){
 var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
@@ -2099,10 +2112,11 @@ for (var key in http) {
 https.request = function (params, cb) {
     if (!params) params = {};
     params.scheme = 'https';
+    params.protocol = 'https:';
     return http.request.call(this, params, cb);
 }
 
-},{"http":30}],9:[function(_dereq_,module,exports){
+},{"http":31}],9:[function(_dereq_,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -2128,11 +2142,30 @@ if (typeof Object.create === 'function') {
 }
 
 },{}],10:[function(_dereq_,module,exports){
+/**
+ * Determine if an object is Buffer
+ *
+ * Author:   Feross Aboukhadijeh <feross@feross.org> <http://feross.org>
+ * License:  MIT
+ *
+ * `npm install is-buffer`
+ */
+
+module.exports = function (obj) {
+  return !!(obj != null &&
+    (obj._isBuffer || // For Safari 5-7 (missing Object.prototype.constructor)
+      (obj.constructor &&
+      typeof obj.constructor.isBuffer === 'function' &&
+      obj.constructor.isBuffer(obj))
+    ))
+}
+
+},{}],11:[function(_dereq_,module,exports){
 module.exports = Array.isArray || function (arr) {
   return Object.prototype.toString.call(arr) == '[object Array]';
 };
 
-},{}],11:[function(_dereq_,module,exports){
+},{}],12:[function(_dereq_,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -2165,7 +2198,9 @@ function drainQueue() {
         currentQueue = queue;
         queue = [];
         while (++queueIndex < len) {
-            currentQueue[queueIndex].run();
+            if (currentQueue) {
+                currentQueue[queueIndex].run();
+            }
         }
         queueIndex = -1;
         len = queue.length;
@@ -2217,14 +2252,13 @@ process.binding = function (name) {
     throw new Error('process.binding is not supported');
 };
 
-// TODO(shtylman)
 process.cwd = function () { return '/' };
 process.chdir = function (dir) {
     throw new Error('process.chdir is not supported');
 };
 process.umask = function() { return 0; };
 
-},{}],12:[function(_dereq_,module,exports){
+},{}],13:[function(_dereq_,module,exports){
 (function (global){
 /*! https://mths.be/punycode v1.3.2 by @mathias */
 ;(function(root) {
@@ -2758,7 +2792,7 @@ process.umask = function() { return 0; };
 }(this));
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],13:[function(_dereq_,module,exports){
+},{}],14:[function(_dereq_,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -2844,7 +2878,7 @@ var isArray = Array.isArray || function (xs) {
   return Object.prototype.toString.call(xs) === '[object Array]';
 };
 
-},{}],14:[function(_dereq_,module,exports){
+},{}],15:[function(_dereq_,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -2931,16 +2965,16 @@ var objectKeys = Object.keys || function (obj) {
   return res;
 };
 
-},{}],15:[function(_dereq_,module,exports){
+},{}],16:[function(_dereq_,module,exports){
 'use strict';
 
 exports.decode = exports.parse = _dereq_('./decode');
 exports.encode = exports.stringify = _dereq_('./encode');
 
-},{"./decode":13,"./encode":14}],16:[function(_dereq_,module,exports){
+},{"./decode":14,"./encode":15}],17:[function(_dereq_,module,exports){
 module.exports = _dereq_("./lib/_stream_duplex.js")
 
-},{"./lib/_stream_duplex.js":17}],17:[function(_dereq_,module,exports){
+},{"./lib/_stream_duplex.js":18}],18:[function(_dereq_,module,exports){
 // a duplex stream is just a stream that is both readable and writable.
 // Since JS doesn't have multiple prototypal inheritance, this class
 // prototypally inherits from Readable, and then parasitically from
@@ -3024,7 +3058,7 @@ function forEach (xs, f) {
   }
 }
 
-},{"./_stream_readable":19,"./_stream_writable":21,"core-util-is":22,"inherits":9,"process-nextick-args":23}],18:[function(_dereq_,module,exports){
+},{"./_stream_readable":20,"./_stream_writable":22,"core-util-is":23,"inherits":9,"process-nextick-args":24}],19:[function(_dereq_,module,exports){
 // a passthrough stream.
 // basically just the most minimal sort of Transform stream.
 // Every written chunk gets output as-is.
@@ -3053,7 +3087,7 @@ PassThrough.prototype._transform = function(chunk, encoding, cb) {
   cb(null, chunk);
 };
 
-},{"./_stream_transform":20,"core-util-is":22,"inherits":9}],19:[function(_dereq_,module,exports){
+},{"./_stream_transform":21,"core-util-is":23,"inherits":9}],20:[function(_dereq_,module,exports){
 (function (process){
 'use strict';
 
@@ -4016,7 +4050,7 @@ function indexOf (xs, x) {
 }
 
 }).call(this,_dereq_('_process'))
-},{"./_stream_duplex":17,"_process":11,"buffer":3,"core-util-is":22,"events":7,"inherits":9,"isarray":10,"process-nextick-args":23,"string_decoder/":39,"util":2}],20:[function(_dereq_,module,exports){
+},{"./_stream_duplex":18,"_process":12,"buffer":3,"core-util-is":23,"events":7,"inherits":9,"isarray":11,"process-nextick-args":24,"string_decoder/":36,"util":2}],21:[function(_dereq_,module,exports){
 // a transform stream is a readable/writable stream where you do
 // something with the data.  Sometimes it's called a "filter",
 // but that's not a great name for it, since that implies a thing where
@@ -4215,7 +4249,7 @@ function done(stream, er) {
   return stream.push(null);
 }
 
-},{"./_stream_duplex":17,"core-util-is":22,"inherits":9}],21:[function(_dereq_,module,exports){
+},{"./_stream_duplex":18,"core-util-is":23,"inherits":9}],22:[function(_dereq_,module,exports){
 // A bit simpler than readable streams.
 // Implement an async ._write(chunk, cb), and it'll handle all
 // the drain event emission and buffering.
@@ -4737,7 +4771,7 @@ function endWritable(stream, state, cb) {
   state.ended = true;
 }
 
-},{"./_stream_duplex":17,"buffer":3,"core-util-is":22,"events":7,"inherits":9,"process-nextick-args":23,"util-deprecate":24}],22:[function(_dereq_,module,exports){
+},{"./_stream_duplex":18,"buffer":3,"core-util-is":23,"events":7,"inherits":9,"process-nextick-args":24,"util-deprecate":25}],23:[function(_dereq_,module,exports){
 (function (Buffer){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -4846,8 +4880,8 @@ exports.isBuffer = isBuffer;
 function objectToString(o) {
   return Object.prototype.toString.call(o);
 }
-}).call(this,_dereq_("buffer").Buffer)
-},{"buffer":3}],23:[function(_dereq_,module,exports){
+}).call(this,{"isBuffer":_dereq_("/home/giuliano/Scrivania/digital_domain/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js")})
+},{"/home/giuliano/Scrivania/digital_domain/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js":10}],24:[function(_dereq_,module,exports){
 (function (process){
 'use strict';
 module.exports = nextTick;
@@ -4855,7 +4889,7 @@ module.exports = nextTick;
 function nextTick(fn) {
   var args = new Array(arguments.length - 1);
   var i = 0;
-  while (i < arguments.length) {
+  while (i < args.length) {
     args[i++] = arguments[i];
   }
   process.nextTick(function afterTick() {
@@ -4864,7 +4898,7 @@ function nextTick(fn) {
 }
 
 }).call(this,_dereq_('_process'))
-},{"_process":11}],24:[function(_dereq_,module,exports){
+},{"_process":12}],25:[function(_dereq_,module,exports){
 (function (global){
 
 /**
@@ -4923,17 +4957,22 @@ function deprecate (fn, msg) {
  */
 
 function config (name) {
-  if (!global.localStorage) return false;
+  // accessing global.localStorage can trigger a DOMException in sandboxed iframes
+  try {
+    if (!global.localStorage) return false;
+  } catch (_) {
+    return false;
+  }
   var val = global.localStorage[name];
   if (null == val) return false;
   return String(val).toLowerCase() === 'true';
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],25:[function(_dereq_,module,exports){
+},{}],26:[function(_dereq_,module,exports){
 module.exports = _dereq_("./lib/_stream_passthrough.js")
 
-},{"./lib/_stream_passthrough.js":18}],26:[function(_dereq_,module,exports){
+},{"./lib/_stream_passthrough.js":19}],27:[function(_dereq_,module,exports){
 var Stream = (function (){
   try {
     return _dereq_('st' + 'ream'); // hack to fix a circular dependency issue when used with browserify
@@ -4947,13 +4986,13 @@ exports.Duplex = _dereq_('./lib/_stream_duplex.js');
 exports.Transform = _dereq_('./lib/_stream_transform.js');
 exports.PassThrough = _dereq_('./lib/_stream_passthrough.js');
 
-},{"./lib/_stream_duplex.js":17,"./lib/_stream_passthrough.js":18,"./lib/_stream_readable.js":19,"./lib/_stream_transform.js":20,"./lib/_stream_writable.js":21}],27:[function(_dereq_,module,exports){
+},{"./lib/_stream_duplex.js":18,"./lib/_stream_passthrough.js":19,"./lib/_stream_readable.js":20,"./lib/_stream_transform.js":21,"./lib/_stream_writable.js":22}],28:[function(_dereq_,module,exports){
 module.exports = _dereq_("./lib/_stream_transform.js")
 
-},{"./lib/_stream_transform.js":20}],28:[function(_dereq_,module,exports){
+},{"./lib/_stream_transform.js":21}],29:[function(_dereq_,module,exports){
 module.exports = _dereq_("./lib/_stream_writable.js")
 
-},{"./lib/_stream_writable.js":21}],29:[function(_dereq_,module,exports){
+},{"./lib/_stream_writable.js":22}],30:[function(_dereq_,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -5082,7 +5121,7 @@ Stream.prototype.pipe = function(dest, options) {
   return dest;
 };
 
-},{"events":7,"inherits":9,"readable-stream/duplex.js":16,"readable-stream/passthrough.js":25,"readable-stream/readable.js":26,"readable-stream/transform.js":27,"readable-stream/writable.js":28}],30:[function(_dereq_,module,exports){
+},{"events":7,"inherits":9,"readable-stream/duplex.js":17,"readable-stream/passthrough.js":26,"readable-stream/readable.js":27,"readable-stream/transform.js":28,"readable-stream/writable.js":29}],31:[function(_dereq_,module,exports){
 var ClientRequest = _dereq_('./lib/request')
 var extend = _dereq_('xtend')
 var statusCodes = _dereq_('builtin-status-codes')
@@ -5096,19 +5135,19 @@ http.request = function (opts, cb) {
 	else
 		opts = extend(opts)
 
-	// Split opts.host into its components
-	var hostHostname = opts.host ? opts.host.split(':')[0] : null
-	var hostPort = opts.host ? parseInt(opts.host.split(':')[1], 10) : null
+	var protocol = opts.protocol || ''
+	var host = opts.hostname || opts.host
+	var port = opts.port
+	var path = opts.path || '/'
 
-	opts.method = opts.method || 'GET'
+	// Necessary for IPv6 addresses
+	if (host && host.indexOf(':') !== -1)
+		host = '[' + host + ']'
+
+	// This may be a relative url. The browser should always be able to interpret it correctly.
+	opts.url = (host ? (protocol + '//' + host) : '') + (port ? ':' + port : '') + path
+	opts.method = (opts.method || 'GET').toUpperCase()
 	opts.headers = opts.headers || {}
-	opts.path = opts.path || '/'
-	opts.protocol = opts.protocol || window.location.protocol
-	// If the hostname is provided, use the default port for the protocol. If
-	// the url is instead relative, use window.location.port
-	var defaultPort = (opts.hostname || hostHostname) ? (opts.protocol === 'https:' ? 443 : 80) : window.location.port
-	opts.hostname = opts.hostname || hostHostname || window.location.hostname
-	opts.port = opts.port || hostPort || defaultPort
 
 	// Also valid opts.auth, opts.mode
 
@@ -5157,8 +5196,9 @@ http.METHODS = [
 	'UNLOCK',
 	'UNSUBSCRIBE'
 ]
-},{"./lib/request":32,"builtin-status-codes":34,"url":40,"xtend":41}],31:[function(_dereq_,module,exports){
-exports.fetch = isFunction(window.fetch) && isFunction(window.ReadableByteStream)
+},{"./lib/request":33,"builtin-status-codes":35,"url":37,"xtend":38}],32:[function(_dereq_,module,exports){
+(function (global){
+exports.fetch = isFunction(global.fetch) && isFunction(global.ReadableByteStream)
 
 exports.blobConstructor = false
 try {
@@ -5166,8 +5206,10 @@ try {
 	exports.blobConstructor = true
 } catch (e) {}
 
-var xhr = new window.XMLHttpRequest()
-xhr.open('GET', '/')
+var xhr = new global.XMLHttpRequest()
+// If location.host is empty, e.g. if this page/worker was loaded
+// from a Blob, then use example.com to avoid an error
+xhr.open('GET', global.location.host ? '/' : 'https://example.com')
 
 function checkTypeSupport (type) {
 	try {
@@ -5177,10 +5219,10 @@ function checkTypeSupport (type) {
 	return false
 }
 
-// For some strange reason, Safari 7.0 reports typeof window.ArrayBuffer === 'object'.
+// For some strange reason, Safari 7.0 reports typeof global.ArrayBuffer === 'object'.
 // Safari 7.1 appears to have fixed this bug.
-var haveArrayBuffer = typeof window.ArrayBuffer !== 'undefined'
-var haveSlice = haveArrayBuffer && isFunction(window.ArrayBuffer.prototype.slice)
+var haveArrayBuffer = typeof global.ArrayBuffer !== 'undefined'
+var haveSlice = haveArrayBuffer && isFunction(global.ArrayBuffer.prototype.slice)
 
 exports.arraybuffer = haveArrayBuffer && checkTypeSupport('arraybuffer')
 // These next two tests unavoidably show warnings in Chrome. Since fetch will always
@@ -5189,7 +5231,7 @@ exports.msstream = !exports.fetch && haveSlice && checkTypeSupport('ms-stream')
 exports.mozchunkedarraybuffer = !exports.fetch && haveArrayBuffer &&
 	checkTypeSupport('moz-chunked-arraybuffer')
 exports.overrideMimeType = isFunction(xhr.overrideMimeType)
-exports.vbArray = isFunction(window.VBArray)
+exports.vbArray = isFunction(global.VBArray)
 
 function isFunction (value) {
   return typeof value === 'function'
@@ -5197,14 +5239,12 @@ function isFunction (value) {
 
 xhr = null // Help gc
 
-},{}],32:[function(_dereq_,module,exports){
-(function (process,Buffer){
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{}],33:[function(_dereq_,module,exports){
+(function (process,global,Buffer){
 // var Base64 = require('Base64')
 var capability = _dereq_('./capability')
-var foreach = _dereq_('foreach')
-var indexOf = _dereq_('indexof')
 var inherits = _dereq_('inherits')
-var keys = _dereq_('object-keys')
 var response = _dereq_('./response')
 var stream = _dereq_('stream')
 
@@ -5232,12 +5272,11 @@ var ClientRequest = module.exports = function (opts) {
 	stream.Writable.call(self)
 
 	self._opts = opts
-	self._url = opts.protocol + '//' + opts.hostname + ':' + opts.port + opts.path
 	self._body = []
 	self._headers = {}
 	if (opts.auth)
 		self.setHeader('Authorization', 'Basic ' + new Buffer(opts.auth).toString('base64'))
-	foreach(keys(opts.headers), function (name) {
+	Object.keys(opts.headers).forEach(function (name) {
 		self.setHeader(name, opts.headers[name])
 	})
 
@@ -5270,7 +5309,7 @@ ClientRequest.prototype.setHeader = function (name, value) {
 	// This check is not necessary, but it prevents warnings from browsers about setting unsafe
 	// headers. To be honest I'm not entirely sure hiding these warnings is a good thing, but
 	// http-browserify did it, so I will too.
-	if (indexOf(unsafeHeaders, lowerName) !== -1)
+	if (unsafeHeaders.indexOf(lowerName) !== -1)
 		return
 
 	self._headers[lowerName] = {
@@ -5298,9 +5337,9 @@ ClientRequest.prototype._onFinish = function () {
 
 	var headersObj = self._headers
 	var body
-	if (opts.method === 'POST' || opts.method === 'PUT') {
+	if (opts.method === 'POST' || opts.method === 'PUT' || opts.method === 'PATCH') {
 		if (capability.blobConstructor) {
-			body = new window.Blob(self._body.map(function (buffer) {
+			body = new global.Blob(self._body.map(function (buffer) {
 				return buffer.toArrayBuffer()
 			}), {
 				type: (headersObj['content-type'] || {}).value || ''
@@ -5312,11 +5351,11 @@ ClientRequest.prototype._onFinish = function () {
 	}
 
 	if (self._mode === 'fetch') {
-		var headers = keys(headersObj).map(function (name) {
+		var headers = Object.keys(headersObj).map(function (name) {
 			return [headersObj[name].name, headersObj[name].value]
 		})
 
-		window.fetch(self._url, {
+		global.fetch(self._opts.url, {
 			method: self._opts.method,
 			headers: headers,
 			body: body,
@@ -5325,13 +5364,13 @@ ClientRequest.prototype._onFinish = function () {
 		}).then(function (response) {
 			self._fetchResponse = response
 			self._connect()
-		}).then(undefined, function (reason) {
+		}, function (reason) {
 			self.emit('error', reason)
 		})
 	} else {
-		var xhr = self._xhr = new window.XMLHttpRequest()
+		var xhr = self._xhr = new global.XMLHttpRequest()
 		try {
-			xhr.open(self._opts.method, self._url, true)
+			xhr.open(self._opts.method, self._opts.url, true)
 		} catch (err) {
 			process.nextTick(function () {
 				self.emit('error', err)
@@ -5349,7 +5388,7 @@ ClientRequest.prototype._onFinish = function () {
 		if (self._mode === 'text' && 'overrideMimeType' in xhr)
 			xhr.overrideMimeType('text/plain; charset=x-user-defined')
 
-		foreach(keys(headersObj), function (name) {
+		Object.keys(headersObj).forEach(function (name) {
 			xhr.setRequestHeader(headersObj[name].name, headersObj[name].value)
 		})
 
@@ -5479,11 +5518,10 @@ var unsafeHeaders = [
 	'via'
 ]
 
-}).call(this,_dereq_('_process'),_dereq_("buffer").Buffer)
-},{"./capability":31,"./response":33,"_process":11,"buffer":3,"foreach":35,"indexof":36,"inherits":9,"object-keys":37,"stream":29}],33:[function(_dereq_,module,exports){
-(function (process,Buffer){
+}).call(this,_dereq_('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},_dereq_("buffer").Buffer)
+},{"./capability":32,"./response":34,"_process":12,"buffer":3,"inherits":9,"stream":30}],34:[function(_dereq_,module,exports){
+(function (process,global,Buffer){
 var capability = _dereq_('./capability')
-var foreach = _dereq_('foreach')
 var inherits = _dereq_('inherits')
 var stream = _dereq_('stream')
 
@@ -5548,7 +5586,7 @@ var IncomingMessage = exports.IncomingMessage = function (xhr, response, mode) {
 		self.statusCode = xhr.status
 		self.statusMessage = xhr.statusText
 		var headers = xhr.getAllResponseHeaders().split(/\r?\n/)
-		foreach(headers, function (header) {
+		headers.forEach(function (header) {
 			var matches = header.match(/^([^:]+):\s*(.*)/)
 			if (matches) {
 				var key = matches[1].toLowerCase()
@@ -5591,7 +5629,7 @@ IncomingMessage.prototype._onXHRProgress = function () {
 				break
 			try {
 				// This fails in IE8
-				response = new window.VBArray(xhr.responseBody).toArray()
+				response = new global.VBArray(xhr.responseBody).toArray()
 			} catch (e) {}
 			if (response !== null) {
 				self.push(new Buffer(response))
@@ -5635,7 +5673,7 @@ IncomingMessage.prototype._onXHRProgress = function () {
 			response = xhr.response
 			if (xhr.readyState !== rStates.LOADING)
 				break
-			var reader = new window.MSStreamReader()
+			var reader = new global.MSStreamReader()
 			reader.onprogress = function () {
 				if (reader.result.byteLength > self._pos) {
 					self.push(new Buffer(new Uint8Array(reader.result.slice(self._pos))))
@@ -5656,8 +5694,8 @@ IncomingMessage.prototype._onXHRProgress = function () {
 	}
 }
 
-}).call(this,_dereq_('_process'),_dereq_("buffer").Buffer)
-},{"./capability":31,"_process":11,"buffer":3,"foreach":35,"inherits":9,"stream":29}],34:[function(_dereq_,module,exports){
+}).call(this,_dereq_('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},_dereq_("buffer").Buffer)
+},{"./capability":32,"_process":12,"buffer":3,"inherits":9,"stream":30}],35:[function(_dereq_,module,exports){
 module.exports = {
   "100": "Continue",
   "101": "Switching Protocols",
@@ -5718,148 +5756,7 @@ module.exports = {
   "511": "Network Authentication Required"
 }
 
-},{}],35:[function(_dereq_,module,exports){
-
-var hasOwn = Object.prototype.hasOwnProperty;
-var toString = Object.prototype.toString;
-
-module.exports = function forEach (obj, fn, ctx) {
-    if (toString.call(fn) !== '[object Function]') {
-        throw new TypeError('iterator must be a function');
-    }
-    var l = obj.length;
-    if (l === +l) {
-        for (var i = 0; i < l; i++) {
-            fn.call(ctx, obj[i], i, obj);
-        }
-    } else {
-        for (var k in obj) {
-            if (hasOwn.call(obj, k)) {
-                fn.call(ctx, obj[k], k, obj);
-            }
-        }
-    }
-};
-
-
 },{}],36:[function(_dereq_,module,exports){
-
-var indexOf = [].indexOf;
-
-module.exports = function(arr, obj){
-  if (indexOf) return arr.indexOf(obj);
-  for (var i = 0; i < arr.length; ++i) {
-    if (arr[i] === obj) return i;
-  }
-  return -1;
-};
-},{}],37:[function(_dereq_,module,exports){
-'use strict';
-
-// modified from https://github.com/es-shims/es5-shim
-var has = Object.prototype.hasOwnProperty;
-var toStr = Object.prototype.toString;
-var slice = Array.prototype.slice;
-var isArgs = _dereq_('./isArguments');
-var hasDontEnumBug = !({ 'toString': null }).propertyIsEnumerable('toString');
-var hasProtoEnumBug = function () {}.propertyIsEnumerable('prototype');
-var dontEnums = [
-	'toString',
-	'toLocaleString',
-	'valueOf',
-	'hasOwnProperty',
-	'isPrototypeOf',
-	'propertyIsEnumerable',
-	'constructor'
-];
-
-var keysShim = function keys(object) {
-	var isObject = object !== null && typeof object === 'object';
-	var isFunction = toStr.call(object) === '[object Function]';
-	var isArguments = isArgs(object);
-	var isString = isObject && toStr.call(object) === '[object String]';
-	var theKeys = [];
-
-	if (!isObject && !isFunction && !isArguments) {
-		throw new TypeError('Object.keys called on a non-object');
-	}
-
-	var skipProto = hasProtoEnumBug && isFunction;
-	if (isString && object.length > 0 && !has.call(object, 0)) {
-		for (var i = 0; i < object.length; ++i) {
-			theKeys.push(String(i));
-		}
-	}
-
-	if (isArguments && object.length > 0) {
-		for (var j = 0; j < object.length; ++j) {
-			theKeys.push(String(j));
-		}
-	} else {
-		for (var name in object) {
-			if (!(skipProto && name === 'prototype') && has.call(object, name)) {
-				theKeys.push(String(name));
-			}
-		}
-	}
-
-	if (hasDontEnumBug) {
-		var ctor = object.constructor;
-		var skipConstructor = ctor && ctor.prototype === object;
-
-		for (var k = 0; k < dontEnums.length; ++k) {
-			if (!(skipConstructor && dontEnums[k] === 'constructor') && has.call(object, dontEnums[k])) {
-				theKeys.push(dontEnums[k]);
-			}
-		}
-	}
-	return theKeys;
-};
-
-keysShim.shim = function shimObjectKeys() {
-	if (!Object.keys) {
-		Object.keys = keysShim;
-	} else {
-		var keysWorksWithArguments = (function () {
-			// Safari 5.0 bug
-			return (Object.keys(arguments) || '').length === 2;
-		}(1, 2));
-		if (!keysWorksWithArguments) {
-			var originalKeys = Object.keys;
-			Object.keys = function keys(object) {
-				if (isArgs(object)) {
-					return originalKeys(slice.call(object));
-				} else {
-					return originalKeys(object);
-				}
-			};
-		}
-	}
-	return Object.keys || keysShim;
-};
-
-module.exports = keysShim;
-
-},{"./isArguments":38}],38:[function(_dereq_,module,exports){
-'use strict';
-
-var toStr = Object.prototype.toString;
-
-module.exports = function isArguments(value) {
-	var str = toStr.call(value);
-	var isArgs = str === '[object Arguments]';
-	if (!isArgs) {
-		isArgs = str !== '[object Array]' &&
-			value !== null &&
-			typeof value === 'object' &&
-			typeof value.length === 'number' &&
-			value.length >= 0 &&
-			toStr.call(value.callee) === '[object Function]';
-	}
-	return isArgs;
-};
-
-},{}],39:[function(_dereq_,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -6082,7 +5979,7 @@ function base64DetectIncompleteChar(buffer) {
   this.charLength = this.charReceived ? 3 : 0;
 }
 
-},{"buffer":3}],40:[function(_dereq_,module,exports){
+},{"buffer":3}],37:[function(_dereq_,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -6791,7 +6688,7 @@ function isNullOrUndefined(arg) {
   return  arg == null;
 }
 
-},{"punycode":12,"querystring":15}],41:[function(_dereq_,module,exports){
+},{"punycode":13,"querystring":16}],38:[function(_dereq_,module,exports){
 module.exports = extend
 
 function extend() {
@@ -6810,11 +6707,11 @@ function extend() {
     return target
 }
 
-},{}],42:[function(_dereq_,module,exports){
+},{}],39:[function(_dereq_,module,exports){
 /*jslint browser: true, devel: true, node: true, ass: true, nomen: true, unparam: true, indent: 4 */
 
 module.exports = _dereq_('./lib');
-},{"./lib":43}],43:[function(_dereq_,module,exports){
+},{"./lib":40}],40:[function(_dereq_,module,exports){
 (function (global){
 /*jslint browser: true, devel: true, node: true, ass: true, nomen: true, unparam: true, indent: 4 */
 
@@ -6831,6 +6728,8 @@ module.exports = _dereq_('./lib');
     // Vars
     var http      = _dereq_('http'),
         https     = _dereq_('https'),
+        adapters  = {'https': https, 'https:': https},
+        location  = global.location || {},
         XP        = global.XP || _dereq_('expandjs'),
         XPEmitter = global.XPEmitter || _dereq_('xp-emitter');
 
@@ -6878,7 +6777,7 @@ module.exports = _dereq_('./lib');
          * Emitted when a response is received.
          *
          * @event response
-         * @param {number} statusCode
+         * @param {string} url
          * @param {Object} emitter
          */
 
@@ -6912,7 +6811,7 @@ module.exports = _dereq_('./lib');
          *   @param {string} [options.method = "GET"] A string specifying the HTTP request method.
          *   @param {string} [options.path] The request path, usable in alternative to url.
          *   @param {number} [options.port] The request port, usable in alternative to url.
-         *   @param {number} [options.protocol] The request protocol, usable in alternative to url.
+         *   @param {number} [options.protocol = "http:"] The request protocol, usable in alternative to url.
          *   @param {string} [options.url] The request url.
          */
         initialize: {
@@ -6920,30 +6819,53 @@ module.exports = _dereq_('./lib');
             value: function (options, resolver) {
 
                 // Vars
-                var self = this;
+                var self    = this,
+                    adaptee = null;
 
                 // Super
                 XPEmitter.call(self);
 
+                // Overriding
+                if (!XP.isObject(options)) { options = {url: options}; }
+                if (!XP.isFalsy(options.url)) { XP.assign(options, XP.pick(XP.parseURL(options.url), ['hostname', 'path', 'port', 'protocol'])); }
+
                 // Setting
-                self.options     = XP.isObject(options) ? options : {url: options};
-                self.url         = self.options.url || null;
+                self.chunks      = [];
+                self.state       = 'idle';
+                self.options     = options;
                 self.contentType = self.options.contentType || null;
                 self.dataType    = self.options.dataType || null;
                 self.encoding    = self.options.encoding || null;
                 self.headers     = self.options.headers || {};
-                self.hostname    = self.options.hostname || null;
+                self.hostname    = self.options.hostname || location.hostname || null;
                 self.keepAlive   = self.options.keepAlive || 0;
                 self.method      = self.options.method || 'GET';
                 self.path        = self.options.path || null;
-                self.port        = self.options.port || null;
-                self.protocol    = self.options.protocol || null;
-                self.state       = 'idle';
-                self._chunks     = [];
-                self._resolver   = resolver;
+                self.port        = self.options.port || (!self.options.hostname && XP.toNumber(location.port)) || null;
+                self.protocol    = self.options.protocol || (!self.options.hostname && location.protocol) || 'http:';
+                self.url         = XP.toURL({protocol: self.protocol, hostname: self.hostname, port: self.port, pathname: self.pathname, search: self.search});
 
                 // Adapting
-                self._adapt();
+                adaptee = (adapters[self.protocol] || http).request({
+                    headers: self.headers,
+                    hostname: self.hostname,
+                    keepAlive: self.keepAlive > 0,
+                    keepAliveMsecs: self.keepAlive,
+                    method: self.method,
+                    path: self.path,
+                    port: self.port,
+                    protocol: self.protocol,
+                    withCredentials: false
+                });
+
+                // Listening
+                adaptee.on('error', self._handleError.bind(self, resolver));
+                adaptee.on('response', self._handleResponse.bind(self, resolver));
+
+                // Overriding
+                self.abort  = self.abort.bind(self, adaptee);
+                self.header = self.header.bind(self, adaptee);
+                self.submit = self.submit.bind(self, adaptee);
             }
         },
 
@@ -6953,8 +6875,9 @@ module.exports = _dereq_('./lib');
          * Aborts the request.
          *
          * @method abort
+         * @returns {Object}
          */
-        abort: function () {
+        abort: function (adaptee) {
 
             // Vars
             var self = this;
@@ -6963,11 +6886,43 @@ module.exports = _dereq_('./lib');
             if (self.tsAbort) { return self; }
 
             // Aborting
-            self._adaptee.abort();
+            adaptee.abort();
 
             // Setting
             self.state   = 'aborted';
             self.tsAbort = Date.now();
+
+            return self;
+        },
+
+        /**
+         * Get or set a header.
+         *
+         * @method header
+         * @param {string} name
+         * @param {number | string} [value]
+         * @returns {number | string}
+         */
+        header: function (adaptee, name, value) {
+
+            // Asserting
+            XP.assertArgument(XP.isString(name, true), 1, 'string');
+            XP.assertArgument(XP.isVoid(value) || XP.isFalse(value) || XP.isInput(value, true), 2, 'string');
+
+            // Vars
+            var self = this;
+
+            // Getting
+            if (!XP.isDefined(value) || self.state !== 'idle') { return self.headers[name]; }
+
+            // Setting
+            if (value) { adaptee.setHeader(name, self.headers[name] = value); return value; }
+
+            // Removing
+            adaptee.removeHeader(name);
+
+            // Deleting
+            delete self.headers[name];
         },
 
         /**
@@ -6980,7 +6935,7 @@ module.exports = _dereq_('./lib');
          */
         submit: {
             promise: true,
-            value: function (data, resolver) {
+            value: function (adaptee, data, resolver) {
 
                 // Asserting
                 XP.assertArgument(XP.isVoid(resolver) || XP.isFunction(resolver), 2, 'Function');
@@ -7000,7 +6955,7 @@ module.exports = _dereq_('./lib');
                 self.rejected(function (error) { resolver(error, null); });
 
                 // Ending
-                self._adaptee.end(data);
+                adaptee.end(data);
 
                 // Setting
                 self.state    = 'pending';
@@ -7014,46 +6969,15 @@ module.exports = _dereq_('./lib');
         /*********************************************************************/
 
         /**
-         * Creates the adpatee.
+         * TODO DOC
          *
-         * @method _adapt
-         * @returns {Object}
-         * @private
+         * @property chunks
+         * @type Array
          */
-        _adapt: {
-            enumerable: false,
-            value: function () {
-
-                // Vars
-                var self     = this,
-                    location = global.location || {},
-                    secure   = (self.protocol || (!self.hostname && location.protocol)) === 'https:',
-                    port     = (self.port || (!self.hostname && location.port)) || null,
-                    protocol = secure ? 'https:' : 'http:',
-                    factory  = secure ? https : http;
-
-                // Adapting
-                self._adaptee = factory.request({
-                    headers: self.headers,
-                    hostname: self.hostname,
-                    keepAlive: self.keepAlive > 0,
-                    keepAliveMsecs: self.keepAlive,
-                    method: self.method,
-                    path: self.path,
-                    port: port,
-                    protocol: protocol,
-                    withCredentials: false
-                });
-
-                // Listening
-                self._adaptee.on('error', self._handleError.bind(self));
-                self._adaptee.on('response', self._handleResponse.bind(self));
-
-                return self;
-            }
+        chunks: {
+            set: function (val) { return this.chunks || val; },
+            validate: function (val) { return !XP.isArray(val) && 'Array'; }
         },
-
-        /*********************************************************************/
 
         /**
          * TODO DOC
@@ -7144,8 +7068,8 @@ module.exports = _dereq_('./lib');
          * @type string
          */
         hostname: {
-            set: function (val) { return XP.isDefined(this.hostname) ? this.hostname : val; },
-            validate: function (val) { return !XP.isVoid(val) && !XP.isString(val, true) && 'string'; }
+            set: function (val) { return this.hostname || val; },
+            validate: function (val) { return !XP.isString(val, true) && 'string'; }
         },
 
         /**
@@ -7180,6 +7104,18 @@ module.exports = _dereq_('./lib');
          */
         path: {
             set: function (val) { return XP.isDefined(this.path) ? this.path : val; },
+            then: function (post) { var parts = XP.split(post, '?', true); this.pathname = parts[0] || null; this.search = parts[1] ? '?' + parts[1] : null; },
+            validate: function (val) { return !XP.isVoid(val) && !XP.isString(val, true) && 'string'; }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property pathname
+         * @type string
+         */
+        pathname: {
+            set: function (val) { return XP.isDefined(this.path) ? this.path : val; },
             validate: function (val) { return !XP.isVoid(val) && !XP.isString(val, true) && 'string'; }
         },
 
@@ -7201,7 +7137,18 @@ module.exports = _dereq_('./lib');
          * @type string
          */
         protocol: {
-            set: function (val) { return XP.isDefined(this.protocol) ? this.protocol : val; },
+            set: function (val) { return this.protocol || val; },
+            validate: function (val) { return !XP.isString(val, true) && 'string'; }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property pathname
+         * @type string
+         */
+        search: {
+            set: function (val) { return XP.isDefined(this.search) ? this.search : val; },
             validate: function (val) { return !XP.isVoid(val) && !XP.isString(val, true) && 'string'; }
         },
 
@@ -7310,63 +7257,8 @@ module.exports = _dereq_('./lib');
          * @type string
          */
         url: {
-            set: function (val) { return XP.isDefined(this.url) ? this.url : val; },
-            then: function (post) { if (post = XP.parseURL(post)) { this.options = {hostname: post.hostname, path: post.path, port: post.port, protocol: post.protocol}; } },
-            validate: function (val) { return !XP.isVoid(val) && !XP.isString(val, true) && 'string'; }
-        },
-
-        /*********************************************************************/
-
-        /**
-         * TODO DOC
-         *
-         * @property _adaptee
-         * @type Object
-         * @private
-         */
-        _adaptee: {
-            enumerable: false,
-            set: function (val) { return this._adaptee || val; },
-            validate: function (val) { return !XP.isObject(val) && 'Object'; }
-        },
-
-        /**
-         * TODO DOC
-         *
-         * @property _chunks
-         * @type Array
-         * @private
-         */
-        _chunks: {
-            enumerable: false,
-            set: function (val) { return this._chunks || val; },
-            validate: function (val) { return !XP.isArray(val) && 'Array'; }
-        },
-
-        /**
-         * TODO DOC
-         *
-         * @property _resolver
-         * @type Function
-         * @private
-         */
-        _resolver: {
-            enumerable: false,
-            set: function (val) { return this._resolver || val; },
-            validate: function (val) { return !XP.isFunction(val) && 'Function'; }
-        },
-
-        /**
-         * TODO DOC
-         *
-         * @property _response
-         * @type Object
-         * @private
-         */
-        _response: {
-            enumerable: false,
-            set: function (val) { return this._response || val; },
-            validate: function (val) { return !XP.isObject(val) && 'Object'; }
+            set: function (val) { return this.url || val; },
+            validate: function (val) { return !XP.isString(val, true) && 'string'; }
         },
 
         /*********************************************************************/
@@ -7378,21 +7270,21 @@ module.exports = _dereq_('./lib');
             var self = this;
 
             // Setting
-            self._chunks.push(chunk);
+            self.chunks.push(chunk);
 
             // Emitting
             self.emit('chunk', chunk, self);
         },
 
         // HANDLER
-        _handleEnd: function () {
+        _handleEnd: function (resolver) {
 
             // Vars
             var self     = this,
                 failed   = self.statusCode >= 400,
-                data     = failed ? null : XP.join(self._chunks),
+                data     = failed ? null : XP.join(self.chunks),
                 dataType = failed ? 'error' : self.dataType,
-                error    = failed ? XP.join(self._chunks).toString() || self.statusMessage : null,
+                error    = failed ? XP.join(self.chunks).toString() || self.statusMessage : null,
                 state    = failed ? 'failed' : 'received';
 
             // Parsing
@@ -7405,14 +7297,14 @@ module.exports = _dereq_('./lib');
             self.tsData = Date.now();
 
             // Resolving
-            self._resolver(self.error, self.data);
+            resolver(self.error, self.data);
 
             // Emitting
             self.emit(failed ? 'error' : 'data', failed ? self.error : self.data, self);
         },
 
         // HANDLER
-        _handleError: function (error) {
+        _handleError: function (resolver, error) {
 
             // Vars
             var self = this;
@@ -7422,14 +7314,14 @@ module.exports = _dereq_('./lib');
             self.state = 'failed';
 
             // Resolving
-            self._resolver(self.error, null);
+            resolver(self.error, null);
 
             // Emitting
             self.emit('error', self.error, self);
         },
 
         // HANDLER
-        _handleResponse: function (response) {
+        _handleResponse: function (resolver, response) {
 
             // Vars
             var self = this;
@@ -7438,7 +7330,6 @@ module.exports = _dereq_('./lib');
             if (self.encoding) { response.setEncoding(self.encoding); }
 
             // Setting
-            self._response     = response;
             self.state         = 'receiving';
             self.statusCode    = response.statusCode;
             self.statusMessage = response.statusMessage || http.STATUS_CODES[self.statusCode] || 'Unknown';
@@ -7446,14 +7337,14 @@ module.exports = _dereq_('./lib');
 
             // Listening
             response.on('data', self._handleData.bind(self));
-            response.on('end', self._handleEnd.bind(self));
+            response.on('end', self._handleEnd.bind(self, resolver));
 
             // Emitting
-            self.emit('response', self.statusCode, self);
+            self.emit('response', self.url, self);
         }
     });
 
 }(typeof window !== "undefined" ? window : global));
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"expandjs":1,"http":30,"https":8,"xp-emitter":1}]},{},[42])(42)
+},{"expandjs":1,"http":31,"https":8,"xp-emitter":1}]},{},[39])(39)
 });
