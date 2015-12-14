@@ -1,8 +1,649 @@
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.XPRequest = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
+/*jslint browser: true, devel: true, node: true, ass: true, nomen: true, unparam: true, indent: 4 */
 
-},{}],2:[function(_dereq_,module,exports){
-arguments[4][1][0].apply(exports,arguments)
-},{"dup":1}],3:[function(_dereq_,module,exports){
+module.exports = _dereq_('./lib');
+},{"./lib":2}],2:[function(_dereq_,module,exports){
+(function (global){
+/*jslint browser: true, devel: true, node: true, ass: true, nomen: true, unparam: true, indent: 4 */
+
+/**
+ * @license
+ * Copyright (c) 2015 The ExpandJS authors. All rights reserved.
+ * This code may only be used under the BSD style license found at https://expandjs.github.io/LICENSE.txt
+ * The complete set of authors may be found at https://expandjs.github.io/AUTHORS.txt
+ * The complete set of contributors may be found at https://expandjs.github.io/CONTRIBUTORS.txt
+ */
+(function (global) {
+    "use strict";
+
+    // Vars
+    var http      = _dereq_('http'),
+        https     = _dereq_('https'),
+        adapters  = {'https': https, 'https:': https},
+        location  = global.location || {},
+        XP        = global.XP || _dereq_('expandjs'),
+        XPEmitter = global.XPEmitter || _dereq_('xp-emitter');
+
+    /*********************************************************************/
+
+    /**
+     * A class used to perform XHR requests.
+     *
+     * @class XPRequest
+     * @description A class used to perform XHR requests
+     * @extends XPEmitter
+     */
+    module.exports = global.XPRequest = new XP.Class('XPRequest', {
+
+        // EXTENDS
+        extends: XPEmitter,
+
+        /*********************************************************************/
+
+        /**
+         * Emitted when a chunk of data is received.
+         *
+         * @event chunk
+         * @param {Buffer | string} chunk
+         * @param {Object} emitter
+         */
+
+        /**
+         * Emitted when data are received.
+         *
+         * @event data
+         * @param {*} data
+         * @param {Object} emitter
+         */
+
+        /**
+         * Emitted when an error is received.
+         *
+         * @event error
+         * @param {string} error
+         * @param {Object} emitter
+         */
+
+        /**
+         * Emitted when a response is received.
+         *
+         * @event response
+         * @param {string} url
+         * @param {Object} emitter
+         */
+
+        /**
+         * Emitted when the request state changes.
+         *
+         * @event state
+         * @param {string} state
+         * @param {Object} emitter
+         */
+
+        /**
+         * Emitted when the request is submitted.
+         *
+         * @event submit
+         * @param {Buffer | string} data
+         * @param {Object} emitter
+         */
+
+        /*********************************************************************/
+
+        /**
+         * @constructs
+         * @param {Object | string} options The request url or options.
+         *   @param {string} [options.contentType] A shortcut for the "Content-Type" header.
+         *   @param {string} [options.encoding] The response encoding.
+         *   @param {Object} [options.headers] An object containing request headers.
+         *   @param {string} [options.hostname] The request hostname, usable in alternative to url.
+         *   @param {number} [options.keepAlive = 0] How often to submit TCP KeepAlive packets over sockets being kept alive.
+         *   @param {string} [options.method = "GET"] A string specifying the HTTP request method.
+         *   @param {string} [options.path] The request path, usable in alternative to url.
+         *   @param {number} [options.port] The request port, usable in alternative to url.
+         *   @param {number} [options.protocol = "http:"] The request protocol, usable in alternative to url.
+         *   @param {string} [options.responseType] The type of data expected back from the server.
+         *   @param {string} [options.url] The request url.
+         */
+        initialize: {
+            promise: true,
+            value: function (options, resolver) {
+
+                // Vars
+                var self    = this,
+                    adaptee = null;
+
+                // Super
+                XPEmitter.call(self);
+
+                // Overriding
+                if (!XP.isObject(options)) { options = {url: options}; }
+                if (!XP.isFalsy(options.url)) { XP.assign(options, XP.pick(XP.parseURL(options.url), ['hostname', 'path', 'port', 'protocol'])); }
+
+                // Setting
+                self.chunks       = [];
+                self.state        = 'idle';
+                self.options      = options;
+                self.contentType  = self.options.contentType || null;
+                self.encoding     = self.options.encoding || null;
+                self.headers      = self.options.headers || {};
+                self.hostname     = self.options.hostname || location.hostname || null;
+                self.keepAlive    = self.options.keepAlive || 0;
+                self.method       = self.options.method || 'GET';
+                self.path         = self.options.path || null;
+                self.port         = self.options.port || (!self.options.hostname && XP.toNumber(location.port)) || null;
+                self.protocol     = self.options.protocol || (!self.options.hostname && location.protocol) || 'http:';
+                self.responseType = self.options.responseType || null;
+                self.url          = XP.toURL({protocol: self.protocol, hostname: self.hostname, port: self.port, pathname: self.pathname, search: self.search});
+
+                // Adapting
+                adaptee = (adapters[self.protocol] || http).request({
+                    headers: self.headers,
+                    hostname: self.hostname,
+                    keepAlive: self.keepAlive > 0,
+                    keepAliveMsecs: self.keepAlive,
+                    method: self.method,
+                    path: self.path,
+                    port: self.port,
+                    protocol: self.protocol,
+                    withCredentials: false
+                });
+
+                // Listening
+                adaptee.on('error', self._handleError.bind(self, resolver));
+                adaptee.on('response', self._handleResponse.bind(self, resolver));
+
+                // Overriding
+                self.abort  = self.abort.bind(self, adaptee);
+                self.header = self.header.bind(self, adaptee);
+                self.submit = self.submit.bind(self, adaptee);
+            }
+        },
+
+        /*********************************************************************/
+
+        /**
+         * Aborts the request.
+         *
+         * @method abort
+         * @returns {Object}
+         */
+        abort: function (adaptee) {
+
+            // Vars
+            var self = this;
+
+            // Checking
+            if (self.tsAbort) { return self; }
+
+            // Aborting
+            adaptee.abort();
+
+            // Setting
+            self.state   = 'aborted';
+            self.tsAbort = Date.now();
+
+            return self;
+        },
+
+        /**
+         * Get or set a header.
+         *
+         * @method header
+         * @param {string} name
+         * @param {number | string} [value]
+         * @returns {number | string}
+         */
+        header: function (adaptee, name, value) {
+
+            // Asserting
+            XP.assertArgument(XP.isString(name, true), 1, 'string');
+            XP.assertArgument(XP.isVoid(value) || XP.isFalse(value) || XP.isInput(value, true), 2, 'string');
+
+            // Vars
+            var self = this;
+
+            // Getting
+            if (!XP.isDefined(value) || self.state !== 'idle') { return self.headers[name]; }
+
+            // Setting
+            if (value) { adaptee.setHeader(name, self.headers[name] = value); return value; }
+
+            // Removing
+            adaptee.removeHeader(name);
+
+            // Deleting
+            delete self.headers[name];
+        },
+
+        /**
+         * Submits the request, using data for the request body.
+         *
+         * @method submit
+         * @param {*} [data]
+         * @param {Function} [resolver]
+         * @returns {Promise}
+         */
+        submit: {
+            promise: true,
+            value: function (adaptee, data, resolver) {
+
+                // Asserting
+                XP.assertArgument(XP.isVoid(resolver) || XP.isFunction(resolver), 2, 'Function');
+
+                // Vars
+                var self = this;
+
+                // Checking
+                if (self.tsSubmit) { return self; }
+
+                // Serializing
+                if (self.method === 'GET') { data = undefined; }
+                if (self.method !== 'GET') { data = (XP.isInput(data, true) || XP.isBuffer(data) ? data : (XP.isCollection(data) ? XP.toJSON(data) : undefined)); }
+
+                // Catching
+                self.catch(function (err) { resolver(err, null); });
+                self.then(function (data) { resolver(null, data); });
+
+                // Ending
+                adaptee.end(data);
+
+                // Setting
+                self.state    = 'pending';
+                self.tsSubmit = Date.now();
+
+                // Emitting
+                self.emit('submit', data, self);
+            }
+        },
+
+        /*********************************************************************/
+
+        /**
+         * TODO DOC
+         *
+         * @property chunks
+         * @type Array
+         */
+        chunks: {
+            set: function (val) { return this.chunks || val; },
+            validate: function (val) { return !XP.isArray(val) && 'Array'; }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property contentType
+         * @type string
+         */
+        contentType: {
+            set: function (val) { return XP.isDefined(this.contentType) ? this.contentType : val; },
+            validate: function (val) { return !XP.isVoid(val) && !XP.isString(val, true) && 'string'; }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property data
+         * @type *
+         * @readonly
+         */
+        data: {
+            set: function (val) { return XP.isDefined(this.data) ? this.data : val; }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property encoding
+         * @type string
+         */
+        encoding: {
+            set: function (val) { return XP.isDefined(this.encoding) ? this.encoding : val; },
+            validate: function (val) { return !XP.isVoid(val) && !XP.isString(val, true) && 'string'; }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property error
+         * @type string
+         * @readonly
+         */
+        error: {
+            set: function (val) { return XP.isDefined(this.error) ? this.error : val; },
+            validate: function (val) { return !XP.isVoid(val) && !XP.isString(val) && 'string'; }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property headers
+         * @type Object
+         */
+        headers: {
+            set: function (val) { return this.headers || (XP.isObject(val) && XP.cloneDeep(val)); },
+            then: function () { if (this.contentType) { this.headers['content-type'] = this.contentType; } },
+            validate: function (val) { return !XP.isObject(val) && 'Object'; }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property hostname
+         * @type string
+         */
+        hostname: {
+            set: function (val) { return this.hostname || val; },
+            validate: function (val) { return !XP.isString(val, true) && 'string'; }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property keepAlive
+         * @type number
+         * @default 0
+         */
+        keepAlive: {
+            set: function (val) { return XP.isDefined(this.keepAlive) ? this.keepAlive : val; },
+            validate: function (val) { return !XP.isInt(val, true) && 'number'; }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property method
+         * @type string
+         * @default "GET"
+         */
+        method: {
+            set: function (val) { return this.method || XP.upperCase(val); },
+            validate: function (val) { return !XP.isString(val, true) && 'string'; }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property path
+         * @type string
+         */
+        path: {
+            set: function (val) { return XP.isDefined(this.path) ? this.path : val; },
+            then: function (post) { var parts = XP.split(post, '?', true); this.pathname = parts[0] || null; this.search = parts[1] ? '?' + parts[1] : null; },
+            validate: function (val) { return !XP.isVoid(val) && !XP.isString(val, true) && 'string'; }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property pathname
+         * @type string
+         */
+        pathname: {
+            set: function (val) { return XP.isDefined(this.path) ? this.path : val; },
+            validate: function (val) { return !XP.isVoid(val) && !XP.isString(val, true) && 'string'; }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property port
+         * @type number
+         */
+        port: {
+            set: function (val) { return XP.isDefined(this.port) ? this.port : val; },
+            validate: function (val) { return !XP.isVoid(val) && !XP.isInt(val, true) && 'number'; }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property protocol
+         * @type string
+         */
+        protocol: {
+            set: function (val) { return this.protocol || val; },
+            validate: function (val) { return !XP.isString(val, true) && 'string'; }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property responseType
+         * @type string
+         */
+        responseType: {
+            set: function (val) { return XP.isDefined(this.responseType) ? this.responseType : val; },
+            validate: function (val) { return !XP.isVoid(val) && this.responseTypes.indexOf(val) < 0 && 'string'; }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property responseTypes
+         * @type Array
+         * @default ["json"]
+         * @readonly
+         */
+        responseTypes: {
+            frozen: true,
+            writable: false,
+            value: ['json']
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property pathname
+         * @type string
+         */
+        search: {
+            set: function (val) { return XP.isDefined(this.search) ? this.search : val; },
+            validate: function (val) { return !XP.isVoid(val) && !XP.isString(val, true) && 'string'; }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property state
+         * @type string
+         * @readonly
+         */
+        state: {
+            set: function (val) { return val; },
+            then: function (post) { this.emit('state', post, this); },
+            validate: function (val) { return this.states.indexOf(val) < 0 && 'string'; }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property states
+         * @type Array
+         * @default ["aborted", "failed", "idle", "pending", "received", "receiving"]
+         * @readonly
+         */
+        states: {
+            frozen: true,
+            writable: false,
+            value: ['aborted', 'failed', 'idle', 'pending', 'received', 'receiving']
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property statusCode
+         * @type number
+         * @readonly
+         */
+        statusCode: {
+            set: function (val) { return this.statusCode || val; },
+            validate: function (val) { return !XP.isInt(val, true) && 'number'; }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property statusMessage
+         * @type string
+         * @readonly
+         */
+        statusMessage: {
+            set: function (val) { return this.statusMessage || val; },
+            validate: function (val) { return !XP.isString(val) && 'string'; }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property tsAbort
+         * @type number
+         * @readonly
+         */
+        tsAbort: {
+            set: function (val) { return this.tsAbort || val; },
+            validate: function (val) { return !XP.isInt(val, true) && 'number'; }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property tsData
+         * @type number
+         * @readonly
+         */
+        tsData: {
+            set: function (val) { return this.tsData || val; },
+            validate: function (val) { return !XP.isInt(val, true) && 'number'; }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property tsResponse
+         * @type number
+         * @readonly
+         */
+        tsResponse: {
+            set: function (val) { return this.tsResponse || val; },
+            validate: function (val) { return !XP.isInt(val, true) && 'number'; }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property tsSubmit
+         * @type number
+         * @readonly
+         */
+        tsSubmit: {
+            set: function (val) { return this.tsSubmit || val; },
+            validate: function (val) { return !XP.isInt(val, true) && 'number'; }
+        },
+
+        /**
+         * TODO DOC
+         *
+         * @property url
+         * @type string
+         */
+        url: {
+            set: function (val) { return this.url || val; },
+            validate: function (val) { return !XP.isString(val, true) && 'string'; }
+        },
+
+        /*********************************************************************/
+
+        // HANDLER
+        _handleData: function (chunk) {
+
+            // Vars
+            var self = this;
+
+            // Setting
+            self.chunks.push(chunk);
+
+            // Emitting
+            self.emit('chunk', chunk, self);
+        },
+
+        // HANDLER
+        _handleEnd: function (resolver) {
+
+            // Vars
+            var self   = this,
+                failed = self.statusCode >= 400,
+                data   = failed ? null : XP.join(self.chunks),
+                error  = failed ? XP.join(self.chunks).toString() || self.statusMessage : null,
+                state  = failed ? 'failed' : 'received',
+                type   = failed ? 'error' : self.responseType;
+
+            // Parsing
+            if (type === 'json') { data = XP.parseJSON(data.toString()); }
+
+            // Setting
+            self.data   = data;
+            self.error  = error;
+            self.state  = state;
+            self.tsData = Date.now();
+
+            // Resolving
+            resolver(self.error, self.data);
+
+            // Emitting
+            self.emit(failed ? 'error' : 'data', failed ? self.error : self.data, self);
+        },
+
+        // HANDLER
+        _handleError: function (resolver, error) {
+
+            // Vars
+            var self = this;
+
+            // Setting
+            self.error = error.message || 'Unknown';
+            self.state = 'failed';
+
+            // Resolving
+            resolver(self.error, null);
+
+            // Emitting
+            self.emit('error', self.error, self);
+        },
+
+        // HANDLER
+        _handleResponse: function (resolver, response) {
+
+            // Vars
+            var self = this;
+
+            // Encoding
+            if (self.encoding) { response.setEncoding(self.encoding); }
+
+            // Setting
+            self.state         = 'receiving';
+            self.statusCode    = response.statusCode;
+            self.statusMessage = response.statusMessage || http.STATUS_CODES[self.statusCode] || 'Unknown';
+            self.tsResponse    = Date.now();
+
+            // Listening
+            response.on('data', self._handleData.bind(self));
+            response.on('end', self._handleEnd.bind(self, resolver));
+
+            // Emitting
+            self.emit('response', self.url, self);
+        }
+    });
+
+}(typeof window !== "undefined" ? window : global));
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"expandjs":3,"http":33,"https":10,"xp-emitter":3}],3:[function(_dereq_,module,exports){
+
+},{}],4:[function(_dereq_,module,exports){
+arguments[4][3][0].apply(exports,arguments)
+},{"dup":3}],5:[function(_dereq_,module,exports){
 (function (global){
 /*!
  * The buffer module from node.js, for the browser.
@@ -1550,7 +2191,7 @@ function blitBuffer (src, dst, offset, length) {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"base64-js":4,"ieee754":5,"is-array":6}],4:[function(_dereq_,module,exports){
+},{"base64-js":6,"ieee754":7,"is-array":8}],6:[function(_dereq_,module,exports){
 var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
 ;(function (exports) {
@@ -1676,7 +2317,7 @@ var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 	exports.fromByteArray = uint8ToBase64
 }(typeof exports === 'undefined' ? (this.base64js = {}) : exports))
 
-},{}],5:[function(_dereq_,module,exports){
+},{}],7:[function(_dereq_,module,exports){
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
   var eLen = nBytes * 8 - mLen - 1
@@ -1762,7 +2403,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],6:[function(_dereq_,module,exports){
+},{}],8:[function(_dereq_,module,exports){
 
 /**
  * isArray
@@ -1797,7 +2438,7 @@ module.exports = isArray || function (val) {
   return !! val && '[object Array]' == str.call(val);
 };
 
-},{}],7:[function(_dereq_,module,exports){
+},{}],9:[function(_dereq_,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -2100,7 +2741,7 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}],8:[function(_dereq_,module,exports){
+},{}],10:[function(_dereq_,module,exports){
 var http = _dereq_('http');
 
 var https = module.exports;
@@ -2116,7 +2757,7 @@ https.request = function (params, cb) {
     return http.request.call(this, params, cb);
 }
 
-},{"http":31}],9:[function(_dereq_,module,exports){
+},{"http":33}],11:[function(_dereq_,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -2141,7 +2782,7 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],10:[function(_dereq_,module,exports){
+},{}],12:[function(_dereq_,module,exports){
 /**
  * Determine if an object is Buffer
  *
@@ -2160,12 +2801,12 @@ module.exports = function (obj) {
     ))
 }
 
-},{}],11:[function(_dereq_,module,exports){
+},{}],13:[function(_dereq_,module,exports){
 module.exports = Array.isArray || function (arr) {
   return Object.prototype.toString.call(arr) == '[object Array]';
 };
 
-},{}],12:[function(_dereq_,module,exports){
+},{}],14:[function(_dereq_,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -2258,7 +2899,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],13:[function(_dereq_,module,exports){
+},{}],15:[function(_dereq_,module,exports){
 (function (global){
 /*! https://mths.be/punycode v1.3.2 by @mathias */
 ;(function(root) {
@@ -2792,7 +3433,7 @@ process.umask = function() { return 0; };
 }(this));
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],14:[function(_dereq_,module,exports){
+},{}],16:[function(_dereq_,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -2878,7 +3519,7 @@ var isArray = Array.isArray || function (xs) {
   return Object.prototype.toString.call(xs) === '[object Array]';
 };
 
-},{}],15:[function(_dereq_,module,exports){
+},{}],17:[function(_dereq_,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -2965,16 +3606,16 @@ var objectKeys = Object.keys || function (obj) {
   return res;
 };
 
-},{}],16:[function(_dereq_,module,exports){
+},{}],18:[function(_dereq_,module,exports){
 'use strict';
 
 exports.decode = exports.parse = _dereq_('./decode');
 exports.encode = exports.stringify = _dereq_('./encode');
 
-},{"./decode":14,"./encode":15}],17:[function(_dereq_,module,exports){
+},{"./decode":16,"./encode":17}],19:[function(_dereq_,module,exports){
 module.exports = _dereq_("./lib/_stream_duplex.js")
 
-},{"./lib/_stream_duplex.js":18}],18:[function(_dereq_,module,exports){
+},{"./lib/_stream_duplex.js":20}],20:[function(_dereq_,module,exports){
 // a duplex stream is just a stream that is both readable and writable.
 // Since JS doesn't have multiple prototypal inheritance, this class
 // prototypally inherits from Readable, and then parasitically from
@@ -3058,7 +3699,7 @@ function forEach (xs, f) {
   }
 }
 
-},{"./_stream_readable":20,"./_stream_writable":22,"core-util-is":23,"inherits":9,"process-nextick-args":24}],19:[function(_dereq_,module,exports){
+},{"./_stream_readable":22,"./_stream_writable":24,"core-util-is":25,"inherits":11,"process-nextick-args":26}],21:[function(_dereq_,module,exports){
 // a passthrough stream.
 // basically just the most minimal sort of Transform stream.
 // Every written chunk gets output as-is.
@@ -3087,7 +3728,7 @@ PassThrough.prototype._transform = function(chunk, encoding, cb) {
   cb(null, chunk);
 };
 
-},{"./_stream_transform":21,"core-util-is":23,"inherits":9}],20:[function(_dereq_,module,exports){
+},{"./_stream_transform":23,"core-util-is":25,"inherits":11}],22:[function(_dereq_,module,exports){
 (function (process){
 'use strict';
 
@@ -4050,7 +4691,7 @@ function indexOf (xs, x) {
 }
 
 }).call(this,_dereq_('_process'))
-},{"./_stream_duplex":18,"_process":12,"buffer":3,"core-util-is":23,"events":7,"inherits":9,"isarray":11,"process-nextick-args":24,"string_decoder/":36,"util":2}],21:[function(_dereq_,module,exports){
+},{"./_stream_duplex":20,"_process":14,"buffer":5,"core-util-is":25,"events":9,"inherits":11,"isarray":13,"process-nextick-args":26,"string_decoder/":38,"util":4}],23:[function(_dereq_,module,exports){
 // a transform stream is a readable/writable stream where you do
 // something with the data.  Sometimes it's called a "filter",
 // but that's not a great name for it, since that implies a thing where
@@ -4249,7 +4890,7 @@ function done(stream, er) {
   return stream.push(null);
 }
 
-},{"./_stream_duplex":18,"core-util-is":23,"inherits":9}],22:[function(_dereq_,module,exports){
+},{"./_stream_duplex":20,"core-util-is":25,"inherits":11}],24:[function(_dereq_,module,exports){
 // A bit simpler than readable streams.
 // Implement an async ._write(chunk, cb), and it'll handle all
 // the drain event emission and buffering.
@@ -4771,7 +5412,7 @@ function endWritable(stream, state, cb) {
   state.ended = true;
 }
 
-},{"./_stream_duplex":18,"buffer":3,"core-util-is":23,"events":7,"inherits":9,"process-nextick-args":24,"util-deprecate":25}],23:[function(_dereq_,module,exports){
+},{"./_stream_duplex":20,"buffer":5,"core-util-is":25,"events":9,"inherits":11,"process-nextick-args":26,"util-deprecate":27}],25:[function(_dereq_,module,exports){
 (function (Buffer){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -4880,8 +5521,8 @@ exports.isBuffer = isBuffer;
 function objectToString(o) {
   return Object.prototype.toString.call(o);
 }
-}).call(this,{"isBuffer":_dereq_("/home/giuliano/Scrivania/digital_domain/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js")})
-},{"/home/giuliano/Scrivania/digital_domain/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js":10}],24:[function(_dereq_,module,exports){
+}).call(this,{"isBuffer":_dereq_("../../../../insert-module-globals/node_modules/is-buffer/index.js")})
+},{"../../../../insert-module-globals/node_modules/is-buffer/index.js":12}],26:[function(_dereq_,module,exports){
 (function (process){
 'use strict';
 module.exports = nextTick;
@@ -4898,7 +5539,7 @@ function nextTick(fn) {
 }
 
 }).call(this,_dereq_('_process'))
-},{"_process":12}],25:[function(_dereq_,module,exports){
+},{"_process":14}],27:[function(_dereq_,module,exports){
 (function (global){
 
 /**
@@ -4969,10 +5610,10 @@ function config (name) {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],26:[function(_dereq_,module,exports){
+},{}],28:[function(_dereq_,module,exports){
 module.exports = _dereq_("./lib/_stream_passthrough.js")
 
-},{"./lib/_stream_passthrough.js":19}],27:[function(_dereq_,module,exports){
+},{"./lib/_stream_passthrough.js":21}],29:[function(_dereq_,module,exports){
 var Stream = (function (){
   try {
     return _dereq_('st' + 'ream'); // hack to fix a circular dependency issue when used with browserify
@@ -4986,13 +5627,13 @@ exports.Duplex = _dereq_('./lib/_stream_duplex.js');
 exports.Transform = _dereq_('./lib/_stream_transform.js');
 exports.PassThrough = _dereq_('./lib/_stream_passthrough.js');
 
-},{"./lib/_stream_duplex.js":18,"./lib/_stream_passthrough.js":19,"./lib/_stream_readable.js":20,"./lib/_stream_transform.js":21,"./lib/_stream_writable.js":22}],28:[function(_dereq_,module,exports){
+},{"./lib/_stream_duplex.js":20,"./lib/_stream_passthrough.js":21,"./lib/_stream_readable.js":22,"./lib/_stream_transform.js":23,"./lib/_stream_writable.js":24}],30:[function(_dereq_,module,exports){
 module.exports = _dereq_("./lib/_stream_transform.js")
 
-},{"./lib/_stream_transform.js":21}],29:[function(_dereq_,module,exports){
+},{"./lib/_stream_transform.js":23}],31:[function(_dereq_,module,exports){
 module.exports = _dereq_("./lib/_stream_writable.js")
 
-},{"./lib/_stream_writable.js":22}],30:[function(_dereq_,module,exports){
+},{"./lib/_stream_writable.js":24}],32:[function(_dereq_,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -5121,7 +5762,7 @@ Stream.prototype.pipe = function(dest, options) {
   return dest;
 };
 
-},{"events":7,"inherits":9,"readable-stream/duplex.js":17,"readable-stream/passthrough.js":26,"readable-stream/readable.js":27,"readable-stream/transform.js":28,"readable-stream/writable.js":29}],31:[function(_dereq_,module,exports){
+},{"events":9,"inherits":11,"readable-stream/duplex.js":19,"readable-stream/passthrough.js":28,"readable-stream/readable.js":29,"readable-stream/transform.js":30,"readable-stream/writable.js":31}],33:[function(_dereq_,module,exports){
 var ClientRequest = _dereq_('./lib/request')
 var extend = _dereq_('xtend')
 var statusCodes = _dereq_('builtin-status-codes')
@@ -5196,7 +5837,7 @@ http.METHODS = [
 	'UNLOCK',
 	'UNSUBSCRIBE'
 ]
-},{"./lib/request":33,"builtin-status-codes":35,"url":37,"xtend":38}],32:[function(_dereq_,module,exports){
+},{"./lib/request":35,"builtin-status-codes":37,"url":39,"xtend":40}],34:[function(_dereq_,module,exports){
 (function (global){
 exports.fetch = isFunction(global.fetch) && isFunction(global.ReadableByteStream)
 
@@ -5240,7 +5881,7 @@ function isFunction (value) {
 xhr = null // Help gc
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],33:[function(_dereq_,module,exports){
+},{}],35:[function(_dereq_,module,exports){
 (function (process,global,Buffer){
 // var Base64 = require('Base64')
 var capability = _dereq_('./capability')
@@ -5519,7 +6160,7 @@ var unsafeHeaders = [
 ]
 
 }).call(this,_dereq_('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},_dereq_("buffer").Buffer)
-},{"./capability":32,"./response":34,"_process":12,"buffer":3,"inherits":9,"stream":30}],34:[function(_dereq_,module,exports){
+},{"./capability":34,"./response":36,"_process":14,"buffer":5,"inherits":11,"stream":32}],36:[function(_dereq_,module,exports){
 (function (process,global,Buffer){
 var capability = _dereq_('./capability')
 var inherits = _dereq_('inherits')
@@ -5695,7 +6336,7 @@ IncomingMessage.prototype._onXHRProgress = function () {
 }
 
 }).call(this,_dereq_('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},_dereq_("buffer").Buffer)
-},{"./capability":32,"_process":12,"buffer":3,"inherits":9,"stream":30}],35:[function(_dereq_,module,exports){
+},{"./capability":34,"_process":14,"buffer":5,"inherits":11,"stream":32}],37:[function(_dereq_,module,exports){
 module.exports = {
   "100": "Continue",
   "101": "Switching Protocols",
@@ -5756,7 +6397,7 @@ module.exports = {
   "511": "Network Authentication Required"
 }
 
-},{}],36:[function(_dereq_,module,exports){
+},{}],38:[function(_dereq_,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -5979,7 +6620,7 @@ function base64DetectIncompleteChar(buffer) {
   this.charLength = this.charReceived ? 3 : 0;
 }
 
-},{"buffer":3}],37:[function(_dereq_,module,exports){
+},{"buffer":5}],39:[function(_dereq_,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -6688,7 +7329,7 @@ function isNullOrUndefined(arg) {
   return  arg == null;
 }
 
-},{"punycode":13,"querystring":16}],38:[function(_dereq_,module,exports){
+},{"punycode":15,"querystring":18}],40:[function(_dereq_,module,exports){
 module.exports = extend
 
 function extend() {
@@ -6707,644 +7348,5 @@ function extend() {
     return target
 }
 
-},{}],39:[function(_dereq_,module,exports){
-/*jslint browser: true, devel: true, node: true, ass: true, nomen: true, unparam: true, indent: 4 */
-
-module.exports = _dereq_('./lib');
-},{"./lib":40}],40:[function(_dereq_,module,exports){
-(function (global){
-/*jslint browser: true, devel: true, node: true, ass: true, nomen: true, unparam: true, indent: 4 */
-
-/**
- * @license
- * Copyright (c) 2015 The ExpandJS authors. All rights reserved.
- * This code may only be used under the BSD style license found at https://expandjs.github.io/LICENSE.txt
- * The complete set of authors may be found at https://expandjs.github.io/AUTHORS.txt
- * The complete set of contributors may be found at https://expandjs.github.io/CONTRIBUTORS.txt
- */
-(function (global) {
-    "use strict";
-
-    // Vars
-    var http      = _dereq_('http'),
-        https     = _dereq_('https'),
-        adapters  = {'https': https, 'https:': https},
-        location  = global.location || {},
-        XP        = global.XP || _dereq_('expandjs'),
-        XPEmitter = global.XPEmitter || _dereq_('xp-emitter');
-
-    /*********************************************************************/
-
-    /**
-     * This class is used to perform XHR requests.
-     *
-     * @class XPRequest
-     * @description This class is used to perform XHR requests
-     * @extends XPEmitter
-     */
-    module.exports = global.XPRequest = new XP.Class('XPRequest', {
-
-        // EXTENDS
-        extends: XPEmitter,
-
-        /*********************************************************************/
-
-        /**
-         * Emitted when a chunk of data is received.
-         *
-         * @event chunk
-         * @param {Buffer | string} chunk
-         * @param {Object} emitter
-         */
-
-        /**
-         * Emitted when the entire data is received.
-         *
-         * @event data
-         * @param {*} data
-         * @param {Object} emitter
-         */
-
-        /**
-         * Emitted when the entire error is received.
-         *
-         * @event error
-         * @param {string} error
-         * @param {Object} emitter
-         */
-
-        /**
-         * Emitted when a response is received.
-         *
-         * @event response
-         * @param {string} url
-         * @param {Object} emitter
-         */
-
-        /**
-         * Emitted when the request state changes.
-         *
-         * @event state
-         * @param {string} state
-         * @param {Object} emitter
-         */
-
-        /**
-         * Emitted when the request is submitted.
-         *
-         * @event submit
-         * @param {Buffer | string} data
-         * @param {Object} emitter
-         */
-
-        /*********************************************************************/
-
-        /**
-         * @constructs
-         * @param {Object | string} options The request url or options.
-         *   @param {string} [options.contentType] A shortcut for the "Content-Type" header.
-         *   @param {string} [options.dataType] The type of data expected back from the server.
-         *   @param {string} [options.encoding] The response encoding.
-         *   @param {Object} [options.headers] An object containing request headers.
-         *   @param {string} [options.hostname] The request hostname, usable in alternative to url.
-         *   @param {number} [options.keepAlive = 0] How often to submit TCP KeepAlive packets over sockets being kept alive.
-         *   @param {string} [options.method = "GET"] A string specifying the HTTP request method.
-         *   @param {string} [options.path] The request path, usable in alternative to url.
-         *   @param {number} [options.port] The request port, usable in alternative to url.
-         *   @param {number} [options.protocol = "http:"] The request protocol, usable in alternative to url.
-         *   @param {string} [options.url] The request url.
-         */
-        initialize: {
-            promise: true,
-            value: function (options, resolver) {
-
-                // Vars
-                var self    = this,
-                    adaptee = null;
-
-                // Super
-                XPEmitter.call(self);
-
-                // Overriding
-                if (!XP.isObject(options)) { options = {url: options}; }
-                if (!XP.isFalsy(options.url)) { XP.assign(options, XP.pick(XP.parseURL(options.url), ['hostname', 'path', 'port', 'protocol'])); }
-
-                // Setting
-                self.chunks      = [];
-                self.state       = 'idle';
-                self.options     = options;
-                self.contentType = self.options.contentType || null;
-                self.dataType    = self.options.dataType || null;
-                self.encoding    = self.options.encoding || null;
-                self.headers     = self.options.headers || {};
-                self.hostname    = self.options.hostname || location.hostname || null;
-                self.keepAlive   = self.options.keepAlive || 0;
-                self.method      = self.options.method || 'GET';
-                self.path        = self.options.path || null;
-                self.port        = self.options.port || (!self.options.hostname && XP.toNumber(location.port)) || null;
-                self.protocol    = self.options.protocol || (!self.options.hostname && location.protocol) || 'http:';
-                self.url         = XP.toURL({protocol: self.protocol, hostname: self.hostname, port: self.port, pathname: self.pathname, search: self.search});
-
-                // Adapting
-                adaptee = (adapters[self.protocol] || http).request({
-                    headers: self.headers,
-                    hostname: self.hostname,
-                    keepAlive: self.keepAlive > 0,
-                    keepAliveMsecs: self.keepAlive,
-                    method: self.method,
-                    path: self.path,
-                    port: self.port,
-                    protocol: self.protocol,
-                    withCredentials: false
-                });
-
-                // Listening
-                adaptee.on('error', self._handleError.bind(self, resolver));
-                adaptee.on('response', self._handleResponse.bind(self, resolver));
-
-                // Overriding
-                self.abort  = self.abort.bind(self, adaptee);
-                self.header = self.header.bind(self, adaptee);
-                self.submit = self.submit.bind(self, adaptee);
-            }
-        },
-
-        /*********************************************************************/
-
-        /**
-         * Aborts the request.
-         *
-         * @method abort
-         * @returns {Object}
-         */
-        abort: function (adaptee) {
-
-            // Vars
-            var self = this;
-
-            // Checking
-            if (self.tsAbort) { return self; }
-
-            // Aborting
-            adaptee.abort();
-
-            // Setting
-            self.state   = 'aborted';
-            self.tsAbort = Date.now();
-
-            return self;
-        },
-
-        /**
-         * Get or set a header.
-         *
-         * @method header
-         * @param {string} name
-         * @param {number | string} [value]
-         * @returns {number | string}
-         */
-        header: function (adaptee, name, value) {
-
-            // Asserting
-            XP.assertArgument(XP.isString(name, true), 1, 'string');
-            XP.assertArgument(XP.isVoid(value) || XP.isFalse(value) || XP.isInput(value, true), 2, 'string');
-
-            // Vars
-            var self = this;
-
-            // Getting
-            if (!XP.isDefined(value) || self.state !== 'idle') { return self.headers[name]; }
-
-            // Setting
-            if (value) { adaptee.setHeader(name, self.headers[name] = value); return value; }
-
-            // Removing
-            adaptee.removeHeader(name);
-
-            // Deleting
-            delete self.headers[name];
-        },
-
-        /**
-         * Submits the request, using data for the request body.
-         *
-         * @method submit
-         * @param {*} [data]
-         * @param {Function} [resolver]
-         * @returns {Promise}
-         */
-        submit: {
-            promise: true,
-            value: function (adaptee, data, resolver) {
-
-                // Asserting
-                XP.assertArgument(XP.isVoid(resolver) || XP.isFunction(resolver), 2, 'Function');
-
-                // Vars
-                var self = this;
-
-                // Checking
-                if (self.tsSubmit) { return self; }
-
-                // Serializing
-                if (self.method === 'GET') { data = undefined; }
-                if (self.method !== 'GET') { data = (XP.isInput(data, true) || XP.isBuffer(data) ? data : (XP.isCollection(data) ? XP.toJSON(data) : undefined)); }
-
-                // Listening
-                self.resolved(function (data) { resolver(null, data); });
-                self.rejected(function (error) { resolver(error, null); });
-
-                // Ending
-                adaptee.end(data);
-
-                // Setting
-                self.state    = 'pending';
-                self.tsSubmit = Date.now();
-
-                // Emitting
-                self.emit('submit', data, self);
-            }
-        },
-
-        /*********************************************************************/
-
-        /**
-         * TODO DOC
-         *
-         * @property chunks
-         * @type Array
-         */
-        chunks: {
-            set: function (val) { return this.chunks || val; },
-            validate: function (val) { return !XP.isArray(val) && 'Array'; }
-        },
-
-        /**
-         * TODO DOC
-         *
-         * @property contentType
-         * @type string
-         */
-        contentType: {
-            set: function (val) { return XP.isDefined(this.contentType) ? this.contentType : val; },
-            validate: function (val) { return !XP.isVoid(val) && !XP.isString(val, true) && 'string'; }
-        },
-
-        /**
-         * TODO DOC
-         *
-         * @property data
-         * @type *
-         * @readonly
-         */
-        data: {
-            set: function (val) { return XP.isDefined(this.data) ? this.data : val; }
-        },
-
-        /**
-         * TODO DOC
-         *
-         * @property dataType
-         * @type string
-         */
-        dataType: {
-            set: function (val) { return XP.isDefined(this.dataType) ? this.dataType : val; },
-            validate: function (val) { return !XP.isVoid(val) && !XP.includes(this.dataTypes, val) && 'string'; }
-        },
-
-        /**
-         * TODO DOC
-         *
-         * @property dataTypes
-         * @type Array
-         * @default ["json"]
-         * @readonly
-         */
-        dataTypes: {
-            frozen: true,
-            writable: false,
-            value: ['json']
-        },
-
-        /**
-         * TODO DOC
-         *
-         * @property encoding
-         * @type string
-         */
-        encoding: {
-            set: function (val) { return XP.isDefined(this.encoding) ? this.encoding : val; },
-            validate: function (val) { return !XP.isVoid(val) && !XP.isString(val, true) && 'string'; }
-        },
-
-        /**
-         * TODO DOC
-         *
-         * @property error
-         * @type string
-         * @readonly
-         */
-        error: {
-            set: function (val) { return XP.isDefined(this.error) ? this.error : val; },
-            validate: function (val) { return !XP.isVoid(val) && !XP.isString(val) && 'string'; }
-        },
-
-        /**
-         * TODO DOC
-         *
-         * @property headers
-         * @type Object
-         */
-        headers: {
-            set: function (val) { return this.headers || (XP.isObject(val) && XP.cloneDeep(val)); },
-            then: function () { if (this.contentType) { this.headers['content-type'] = this.contentType; } },
-            validate: function (val) { return !XP.isObject(val) && 'Object'; }
-        },
-
-        /**
-         * TODO DOC
-         *
-         * @property hostname
-         * @type string
-         */
-        hostname: {
-            set: function (val) { return this.hostname || val; },
-            validate: function (val) { return !XP.isString(val, true) && 'string'; }
-        },
-
-        /**
-         * TODO DOC
-         *
-         * @property keepAlive
-         * @type number
-         * @default 0
-         */
-        keepAlive: {
-            set: function (val) { return XP.isDefined(this.keepAlive) ? this.keepAlive : val; },
-            validate: function (val) { return !XP.isInt(val, true) && 'number'; }
-        },
-
-        /**
-         * TODO DOC
-         *
-         * @property method
-         * @type string
-         * @default "GET"
-         */
-        method: {
-            set: function (val) { return this.method || XP.upperCase(val); },
-            validate: function (val) { return !XP.isString(val, true) && 'string'; }
-        },
-
-        /**
-         * TODO DOC
-         *
-         * @property path
-         * @type string
-         */
-        path: {
-            set: function (val) { return XP.isDefined(this.path) ? this.path : val; },
-            then: function (post) { var parts = XP.split(post, '?', true); this.pathname = parts[0] || null; this.search = parts[1] ? '?' + parts[1] : null; },
-            validate: function (val) { return !XP.isVoid(val) && !XP.isString(val, true) && 'string'; }
-        },
-
-        /**
-         * TODO DOC
-         *
-         * @property pathname
-         * @type string
-         */
-        pathname: {
-            set: function (val) { return XP.isDefined(this.path) ? this.path : val; },
-            validate: function (val) { return !XP.isVoid(val) && !XP.isString(val, true) && 'string'; }
-        },
-
-        /**
-         * TODO DOC
-         *
-         * @property port
-         * @type number
-         */
-        port: {
-            set: function (val) { return XP.isDefined(this.port) ? this.port : val; },
-            validate: function (val) { return !XP.isVoid(val) && !XP.isInt(val, true) && 'number'; }
-        },
-
-        /**
-         * TODO DOC
-         *
-         * @property protocol
-         * @type string
-         */
-        protocol: {
-            set: function (val) { return this.protocol || val; },
-            validate: function (val) { return !XP.isString(val, true) && 'string'; }
-        },
-
-        /**
-         * TODO DOC
-         *
-         * @property pathname
-         * @type string
-         */
-        search: {
-            set: function (val) { return XP.isDefined(this.search) ? this.search : val; },
-            validate: function (val) { return !XP.isVoid(val) && !XP.isString(val, true) && 'string'; }
-        },
-
-        /**
-         * TODO DOC
-         *
-         * @property state
-         * @type string
-         * @readonly
-         */
-        state: {
-            then: function (post) { this.emit('state', post, this); },
-            validate: function (val) { return !XP.includes(this.states, val) && 'string'; }
-        },
-
-        /**
-         * TODO DOC
-         *
-         * @property states
-         * @type Array
-         * @default ["aborted", "idle", "pending", "received", "receiving"]
-         * @readonly
-         */
-        states: {
-            frozen: true,
-            writable: false,
-            value: ['aborted', 'idle', 'pending', 'received', 'receiving']
-        },
-
-        /**
-         * TODO DOC
-         *
-         * @property statusCode
-         * @type number
-         * @readonly
-         */
-        statusCode: {
-            set: function (val) { return this.statusCode || val; },
-            validate: function (val) { return !XP.isInt(val, true) && 'number'; }
-        },
-
-        /**
-         * TODO DOC
-         *
-         * @property statusMessage
-         * @type string
-         * @readonly
-         */
-        statusMessage: {
-            set: function (val) { return this.statusMessage || val; },
-            validate: function (val) { return !XP.isString(val) && 'string'; }
-        },
-
-        /**
-         * TODO DOC
-         *
-         * @property tsAbort
-         * @type number
-         * @readonly
-         */
-        tsAbort: {
-            set: function (val) { return this.tsAbort || val; },
-            validate: function (val) { return !XP.isInt(val, true) && 'number'; }
-        },
-
-        /**
-         * TODO DOC
-         *
-         * @property tsData
-         * @type number
-         * @readonly
-         */
-        tsData: {
-            set: function (val) { return this.tsData || val; },
-            validate: function (val) { return !XP.isInt(val, true) && 'number'; }
-        },
-
-        /**
-         * TODO DOC
-         *
-         * @property tsResponse
-         * @type number
-         * @readonly
-         */
-        tsResponse: {
-            set: function (val) { return this.tsResponse || val; },
-            validate: function (val) { return !XP.isInt(val, true) && 'number'; }
-        },
-
-        /**
-         * TODO DOC
-         *
-         * @property tsSubmit
-         * @type number
-         * @readonly
-         */
-        tsSubmit: {
-            set: function (val) { return this.tsSubmit || val; },
-            validate: function (val) { return !XP.isInt(val, true) && 'number'; }
-        },
-
-        /**
-         * TODO DOC
-         *
-         * @property url
-         * @type string
-         */
-        url: {
-            set: function (val) { return this.url || val; },
-            validate: function (val) { return !XP.isString(val, true) && 'string'; }
-        },
-
-        /*********************************************************************/
-
-        // HANDLER
-        _handleData: function (chunk) {
-
-            // Vars
-            var self = this;
-
-            // Setting
-            self.chunks.push(chunk);
-
-            // Emitting
-            self.emit('chunk', chunk, self);
-        },
-
-        // HANDLER
-        _handleEnd: function (resolver) {
-
-            // Vars
-            var self     = this,
-                failed   = self.statusCode >= 400,
-                data     = failed ? null : XP.join(self.chunks),
-                dataType = failed ? 'error' : self.dataType,
-                error    = failed ? XP.join(self.chunks).toString() || self.statusMessage : null,
-                state    = failed ? 'failed' : 'received';
-
-            // Parsing
-            if (dataType === 'json') { data = XP.parseJSON(data.toString()); }
-
-            // Setting
-            self.data   = data;
-            self.error  = error;
-            self.state  = state;
-            self.tsData = Date.now();
-
-            // Resolving
-            resolver(self.error, self.data);
-
-            // Emitting
-            self.emit(failed ? 'error' : 'data', failed ? self.error : self.data, self);
-        },
-
-        // HANDLER
-        _handleError: function (resolver, error) {
-
-            // Vars
-            var self = this;
-
-            // Setting
-            self.error = error.message || 'Unknown';
-            self.state = 'failed';
-
-            // Resolving
-            resolver(self.error, null);
-
-            // Emitting
-            self.emit('error', self.error, self);
-        },
-
-        // HANDLER
-        _handleResponse: function (resolver, response) {
-
-            // Vars
-            var self = this;
-
-            // Encoding
-            if (self.encoding) { response.setEncoding(self.encoding); }
-
-            // Setting
-            self.state         = 'receiving';
-            self.statusCode    = response.statusCode;
-            self.statusMessage = response.statusMessage || http.STATUS_CODES[self.statusCode] || 'Unknown';
-            self.tsResponse    = Date.now();
-
-            // Listening
-            response.on('data', self._handleData.bind(self));
-            response.on('end', self._handleEnd.bind(self, resolver));
-
-            // Emitting
-            self.emit('response', self.url, self);
-        }
-    });
-
-}(typeof window !== "undefined" ? window : global));
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"expandjs":1,"http":31,"https":8,"xp-emitter":1}]},{},[39])(39)
+},{}]},{},[1])(1)
 });
